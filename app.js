@@ -2,10 +2,14 @@ const STORAGE_KEY = "happyShrimpFarmer.v1";
 const DEFAULT_PONDS = ["水尾1池", "水尾2池", "大池1"];
 const STATUS = {
   fed: { label: "已餵完", icon: "✅" },
-  rest: { label: "今天休息", icon: "😴" },
   half: { label: "吃一半", icon: "🟡" },
   leftover: { label: "沒吃完", icon: "🟠" },
   notFed: { label: "沒餵", icon: "⚪" }
+};
+const INSPECTION = {
+  ok: { label: "已檢查", icon: "✅", className: "status-ok" },
+  rest: { label: "休息中", icon: "😴", className: "status-rest" },
+  notInspected: { label: "尚未檢查", icon: "⚠️", className: "status-notInspected" }
 };
 
 const todayKey = new Date().toLocaleDateString("sv-SE");
@@ -14,6 +18,7 @@ let editingId = null;
 
 const pondList = document.querySelector("#pondList");
 const emptyState = document.querySelector("#emptyState");
+const gridSelect = document.querySelector("#gridColumns");
 const recordDialog = document.querySelector("#recordDialog");
 const recordForm = document.querySelector("#recordForm");
 const nameDialog = document.querySelector("#nameDialog");
@@ -31,25 +36,48 @@ function loadState() {
   return { ponds: DEFAULT_PONDS.map((name, index) => ({ id: Date.now() + index, name, records: {} })) };
 }
 
+function normalizeRecord(record) {
+  if (!record) return null;
+  const normalized = { ...record };
+  if (!normalized.inspection) {
+    normalized.inspection = normalized.feeding ? "ok" : "notInspected";
+  }
+  return normalized;
+}
+
+function formatStatusText(record) {
+  if (!record) return INSPECTION.notInspected.label;
+  const inspectionLabel = INSPECTION[record.inspection]?.label || INSPECTION.notInspected.label;
+  const details = [];
+  if (record.feeding) details.push(STATUS[record.feeding]?.label);
+  if (record.waterColor) details.push(`水色：${record.waterColor}`);
+  if (record.additives) details.push(`添加物：${record.additives}`);
+  if (record.notes) details.push(`備註：${record.notes}`);
+  return [inspectionLabel, ...details].join(" ・ ");
+}
+
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function render() {
   pondList.replaceChildren();
+  pondList.style.gridTemplateColumns = `repeat(${gridSelect.value}, minmax(0, 1fr))`;
   const template = document.querySelector("#pondTemplate");
   let completed = 0;
 
   state.ponds.forEach((pond) => {
-    const record = pond.records[todayKey];
+    const record = normalizeRecord(pond.records[todayKey]);
     const card = template.content.firstElementChild.cloneNode(true);
     card.dataset.id = pond.id;
+    const inspection = record?.inspection || "notInspected";
+    card.classList.add(INSPECTION[inspection].className);
     card.querySelector("h3").textContent = pond.name;
-    card.querySelector(".pond-status-icon").textContent = record ? STATUS[record.feeding].icon : "○";
-    card.querySelector(".status-text").textContent = record ? STATUS[record.feeding].label : "尚未完成";
-    card.querySelector(".record-time").textContent = record ? `完成時間 ${record.time}${record.notes ? `・${record.notes}` : ""}` : "";
+    card.querySelector(".pond-status-icon").textContent = INSPECTION[inspection].icon;
+    card.querySelector(".status-text").textContent = formatStatusText(record);
+    card.querySelector(".record-time").textContent = record?.time ? `完成時間 ${record.time}` : "";
     card.querySelector(".record-button").textContent = record ? "重新編輯" : "開始紀錄";
-    if (record) { card.classList.add("is-complete"); completed += 1; }
+    if (inspection === "ok") completed += 1;
     pondList.append(card);
   });
 
@@ -69,9 +97,12 @@ function openRecord(id) {
   editingId = id;
   recordForm.reset();
   document.querySelector("#dialogTitle").textContent = pond.name;
-  const record = pond.records[todayKey];
+  const record = normalizeRecord(pond.records[todayKey]);
   if (record) {
-    const radio = recordForm.elements.feeding.value = record.feeding;
+    recordForm.elements.inspection.value = record.inspection;
+    if (record.feeding) recordForm.elements.feeding.value = record.feeding;
+    recordForm.elements.waterColor.value = record.waterColor || "";
+    recordForm.elements.additives.value = record.additives || "";
     recordForm.elements.notes.value = record.notes || "";
   }
   recordDialog.showModal();
@@ -95,12 +126,27 @@ recordForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const pond = state.ponds.find((item) => item.id === editingId);
   const data = new FormData(recordForm);
-  if (!pond || !data.get("feeding")) return;
-  pond.records[todayKey] = {
-    feeding: data.get("feeding"),
-    notes: data.get("notes").trim(),
+  const inspection = data.get("inspection");
+  if (!pond || !inspection) return;
+
+  const record = {
+    inspection,
     time: new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date())
   };
+
+  const feeding = data.get("feeding");
+  if (feeding) record.feeding = feeding;
+
+  const waterColor = data.get("waterColor").trim();
+  if (waterColor) record.waterColor = waterColor;
+
+  const additives = data.get("additives").trim();
+  if (additives) record.additives = additives;
+
+  const notes = data.get("notes").trim();
+  if (notes) record.notes = notes;
+
+  pond.records[todayKey] = record;
   saveState(); render(); recordDialog.close();
 });
 
@@ -113,6 +159,7 @@ nameForm.addEventListener("submit", (event) => {
 });
 
 document.querySelector("#addPondButton").addEventListener("click", () => nameDialog.showModal());
+gridSelect.addEventListener("change", render);
 document.addEventListener("click", (event) => {
   const action = event.target.dataset.action;
   if (action === "add") nameDialog.showModal();

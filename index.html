@@ -38,6 +38,14 @@
           <p class="eyebrow">池子清單</p>
           <h2 id="pondListTitle">今天要照顧的池子</h2>
         </div>
+        <div class="layout-control">
+          <label for="gridColumns">每列顯示</label>
+          <select id="gridColumns" aria-label="每列顯示池子數量">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
       </div>
       <div id="pondList" class="pond-list"></div>
       <div id="emptyState" class="empty-state" hidden>
@@ -58,20 +66,32 @@
       </div>
 
       <fieldset>
-        <legend>餵料狀況</legend>
-        <label class="choice"><input type="radio" name="feeding" value="fed" required><span>✅ 已餵完</span></label>
-        <label class="choice"><input type="radio" name="feeding" value="rest"><span>😴 今天休息</span></label>
+        <legend>池子檢查</legend>
+        <label class="choice"><input type="radio" name="inspection" value="ok" required><span>✅ 已檢查</span></label>
+        <label class="choice"><input type="radio" name="inspection" value="rest"><span>😴 休息中</span></label>
+        <label class="choice"><input type="radio" name="inspection" value="notInspected"><span>🔴 未檢查</span></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>餵食（非必要）</legend>
+        <label class="choice"><input type="radio" name="feeding" value="fed"><span>✅ 已餵完</span></label>
         <label class="choice"><input type="radio" name="feeding" value="half"><span>🟡 吃一半</span></label>
         <label class="choice"><input type="radio" name="feeding" value="leftover"><span>🟠 沒吃完</span></label>
         <label class="choice"><input type="radio" name="feeding" value="notFed"><span>⚪ 沒餵</span></label>
       </fieldset>
+
+      <label class="notes-label" for="waterColor">水色</label>
+      <input id="waterColor" name="waterColor" placeholder="例如：清澈、微濁" autocomplete="off">
+
+      <label class="notes-label" for="additives">添加物</label>
+      <input id="additives" name="additives" placeholder="例如：益菌、除氨藥劑" autocomplete="off">
 
       <label class="notes-label" for="notes">備註（可以不填）</label>
       <textarea id="notes" name="notes" rows="3" placeholder="例如：今天食慾普通"></textarea>
 
       <div class="dialog-actions">
         <button class="button button-secondary" type="button" data-action="close">取消</button>
-        <button class="button button-primary" type="submit">✔ 完成紀錄</button>
+        <button class="button button-primary" type="submit">✔ 完成池子</button>
       </div>
     </form>
   </dialog>
