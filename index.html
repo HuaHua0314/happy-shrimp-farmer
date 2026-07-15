@@ -3,129 +3,107 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#087f5b">
-  <meta name="description" content="簡單好用的每日蝦池餵料紀錄工具">
-  <title>快樂蝦農</title>
+  <meta name="theme-color" content="#1f7a67">
+  <meta name="description" content="蝦農日常管理工具">
+  <title>開心蝦農</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <p class="eyebrow">每日蝦池管理</p>
-      <h1>🦐 快樂蝦農</h1>
-      <p id="today" class="today"></p>
-    </div>
-    <button id="addPondButton" class="button button-secondary" type="button">＋ 新增池子</button>
-  </header>
-
-  <main>
-    <section class="summary" aria-labelledby="summaryTitle">
+  <div id="homeView" class="view">
+    <header class="home-header">
       <div>
-        <p class="eyebrow">今天的進度</p>
-        <h2 id="summaryTitle"><span id="completedCount">0</span> / <span id="totalCount">0</span> 池已完成</h2>
+        <p class="eyebrow">蝦場日常管理</p>
+        <h1>開心蝦農</h1>
+        <p id="homeToday" class="today"></p>
       </div>
-      <div class="progress-row">
-        <div class="progress-track" role="progressbar" aria-label="今天完成率" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-        <strong id="progressText">0%</strong>
-      </div>
-    </section>
+      <div class="brand-mark" aria-hidden="true">🦐</div>
+    </header>
 
-    <section aria-labelledby="pondListTitle">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">池子清單</p>
-          <h2 id="pondListTitle">今天要照顧的池子</h2>
-        </div>
-        <div class="layout-control">
-          <label for="gridColumns">每列顯示</label>
-          <select id="gridColumns" aria-label="每列顯示池子數量">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-          </select>
-        </div>
+    <main class="home-main">
+      <section class="menu-grid" aria-label="主選單">
+        <button class="menu-card menu-feed" type="button" data-feature="餵養">
+          <span class="menu-icon" aria-hidden="true">🟢</span><span>餵養</span>
+        </button>
+        <button class="menu-card menu-patrol" id="openPatrolButton" type="button">
+          <span class="menu-icon" aria-hidden="true">🔵</span><span>巡池</span>
+        </button>
+        <button class="menu-card menu-harvest" type="button" data-feature="出蝦">
+          <span class="menu-icon" aria-hidden="true">🟠</span><span>出蝦</span>
+        </button>
+        <button class="menu-card menu-stats" type="button" data-feature="統計">
+          <span class="menu-icon" aria-hidden="true">🟣</span><span>統計</span>
+        </button>
+        <button class="menu-card menu-ponds" type="button" data-feature="池子管理">
+          <span class="menu-icon" aria-hidden="true">🟤</span><span>池子管理</span>
+        </button>
+        <button class="menu-card menu-settings" type="button" data-feature="設定">
+          <span class="menu-icon" aria-hidden="true">⚙️</span><span>設定</span>
+        </button>
+      </section>
+
+      <section class="daily-summary" aria-label="今日進度">
+        <article>
+          <div class="summary-icon summary-patrol" aria-hidden="true">✓</div>
+          <div><p>今日巡池</p><strong><span id="homePatrolCount">0</span>/<span id="homePondCount">0</span></strong></div>
+        </article>
+        <article>
+          <div class="summary-icon summary-feed" aria-hidden="true">●</div>
+          <div><p>今日餵養</p><strong><span id="homeFeedCount">0</span>/<span id="homeFeedTotal">0</span></strong></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div id="patrolView" class="view" hidden>
+    <header class="topbar">
+      <button id="backHomeButton" class="back-button" type="button" aria-label="返回首頁">‹</button>
+      <div class="patrol-heading">
+        <p class="eyebrow">每日巡池</p>
+        <h1>巡池紀錄</h1>
+        <p id="today" class="today"></p>
       </div>
-      <div id="pondList" class="pond-list"></div>
-      <div id="emptyState" class="empty-state" hidden>
-        <p>目前還沒有池子。</p>
-        <button class="button button-primary" type="button" data-action="add">新增第一個池子</button>
-      </div>
-    </section>
-  </main>
+      <button id="addPondButton" class="button button-secondary" type="button">新增池子</button>
+    </header>
+
+    <main>
+      <section class="summary" aria-labelledby="summaryTitle">
+        <div><p class="eyebrow">今日完成度</p><h2 id="summaryTitle"><span id="completedCount">0</span> / <span id="totalCount">0</span> 池已巡視</h2></div>
+        <div class="progress-row">
+          <div class="progress-track" role="progressbar" aria-label="今日巡池進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progressBar" class="progress-bar"></div></div>
+          <strong id="progressText">0%</strong>
+        </div>
+      </section>
+
+      <section aria-labelledby="pondListTitle">
+        <div class="section-heading">
+          <div><p class="eyebrow">池況列表</p><h2 id="pondListTitle">今日各池狀態</h2></div>
+          <div class="layout-control"><label for="gridColumns">每排顯示</label><select id="gridColumns" aria-label="每排顯示池子數"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+        </div>
+        <div id="pondList" class="pond-list"></div>
+        <div id="emptyState" class="empty-state" hidden><p>目前還沒有池子。</p><button class="button button-primary" type="button" data-action="add">新增第一個池子</button></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="developmentDialog" class="dialog dialog-small">
+    <div class="development-message"><div class="development-icon" aria-hidden="true">🛠️</div><h2 id="developmentTitle">功能開發中</h2><p>這項功能正在準備中，敬請期待。</p><button class="button button-primary" type="button" data-action="close-development">知道了</button></div>
+  </dialog>
 
   <dialog id="recordDialog" class="dialog">
     <form id="recordForm" method="dialog">
-      <div class="dialog-heading">
-        <div>
-          <p class="eyebrow">今天的紀錄</p>
-          <h2 id="dialogTitle">池子紀錄</h2>
-        </div>
-        <button class="icon-button" type="button" data-action="close" aria-label="關閉">×</button>
-      </div>
-
-      <fieldset>
-        <legend>池子檢查</legend>
-        <label class="choice"><input type="radio" name="inspection" value="ok" required><span>✅ 已檢查</span></label>
-        <label class="choice"><input type="radio" name="inspection" value="rest"><span>😴 休息中</span></label>
-        <label class="choice"><input type="radio" name="inspection" value="notInspected"><span>🔴 未檢查</span></label>
-      </fieldset>
-
-      <fieldset>
-        <legend>餵食（非必要）</legend>
-        <label class="choice"><input type="radio" name="feeding" value="fed"><span>✅ 已餵完</span></label>
-        <label class="choice"><input type="radio" name="feeding" value="half"><span>🟡 吃一半</span></label>
-        <label class="choice"><input type="radio" name="feeding" value="leftover"><span>🟠 沒吃完</span></label>
-        <label class="choice"><input type="radio" name="feeding" value="notFed"><span>⚪ 沒餵</span></label>
-      </fieldset>
-
-      <label class="notes-label" for="waterColor">水色</label>
-      <input id="waterColor" name="waterColor" placeholder="例如：清澈、微濁" autocomplete="off">
-
-      <label class="notes-label" for="additives">添加物</label>
-      <input id="additives" name="additives" placeholder="例如：益菌、除氨藥劑" autocomplete="off">
-
-      <label class="notes-label" for="notes">備註（可以不填）</label>
-      <textarea id="notes" name="notes" rows="3" placeholder="例如：今天食慾普通"></textarea>
-
-      <div class="dialog-actions">
-        <button class="button button-secondary" type="button" data-action="close">取消</button>
-        <button class="button button-primary" type="submit">✔ 完成池子</button>
-      </div>
+      <div class="dialog-heading"><div><p class="eyebrow">今日紀錄</p><h2 id="dialogTitle">池子紀錄</h2></div><button class="icon-button" type="button" data-action="close" aria-label="關閉">×</button></div>
+      <fieldset><legend>巡池狀態</legend><label class="choice"><input type="radio" name="inspection" value="ok" required><span>✅ 狀況正常</span></label><label class="choice"><input type="radio" name="inspection" value="rest"><span>🟡 暫停巡視</span></label><label class="choice"><input type="radio" name="inspection" value="notInspected"><span>🔴 尚未巡視</span></label></fieldset>
+      <fieldset><legend>餵養狀態（可不填）</legend><label class="choice"><input type="radio" name="feeding" value="fed"><span>✅ 已餵養</span></label><label class="choice"><input type="radio" name="feeding" value="half"><span>🌓 半量餵養</span></label><label class="choice"><input type="radio" name="feeding" value="leftover"><span>⚠️ 有剩料</span></label><label class="choice"><input type="radio" name="feeding" value="notFed"><span>⭕ 未餵養</span></label></fieldset>
+      <label class="notes-label" for="waterColor">水色</label><input id="waterColor" name="waterColor" placeholder="例如：淡綠、透明" autocomplete="off">
+      <label class="notes-label" for="additives">添加物</label><input id="additives" name="additives" placeholder="例如：益生菌、礦物質" autocomplete="off">
+      <label class="notes-label" for="notes">備註</label><textarea id="notes" name="notes" rows="3" placeholder="記下需要特別留意的狀況"></textarea>
+      <div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close">取消</button><button class="button button-primary" type="submit">儲存紀錄</button></div>
     </form>
   </dialog>
 
-  <dialog id="nameDialog" class="dialog dialog-small">
-    <form id="nameForm" method="dialog">
-      <div class="dialog-heading">
-        <h2>新增池子</h2>
-        <button class="icon-button" type="button" data-action="close-name" aria-label="關閉">×</button>
-      </div>
-      <label class="notes-label" for="pondName">池子名稱</label>
-      <input id="pondName" name="pondName" maxlength="20" placeholder="例如：水尾1池" required>
-      <div class="dialog-actions">
-        <button class="button button-secondary" type="button" data-action="close-name">取消</button>
-        <button class="button button-primary" type="submit">新增</button>
-      </div>
-    </form>
-  </dialog>
+  <dialog id="nameDialog" class="dialog dialog-small"><form id="nameForm" method="dialog"><div class="dialog-heading"><h2>新增池子</h2><button class="icon-button" type="button" data-action="close-name" aria-label="關閉">×</button></div><label class="notes-label" for="pondName">池子名稱</label><input id="pondName" name="pondName" maxlength="20" placeholder="例如：一號池" required><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-name">取消</button><button class="button button-primary" type="submit">新增</button></div></form></dialog>
 
-  <template id="pondTemplate">
-    <article class="pond-card">
-      <div class="pond-status-icon" aria-hidden="true"></div>
-      <div class="pond-info">
-        <h3></h3>
-        <p class="status-text"></p>
-        <p class="record-time"></p>
-      </div>
-      <div class="pond-actions">
-        <button class="button record-button" type="button"></button>
-        <button class="delete-button" type="button" aria-label="刪除池子">刪除</button>
-      </div>
-    </article>
-  </template>
-
+  <template id="pondTemplate"><article class="pond-card"><div class="pond-status-icon" aria-hidden="true"></div><div class="pond-info"><h3></h3><p class="status-text"></p><p class="record-time"></p></div><div class="pond-actions"><button class="button record-button" type="button"></button><button class="delete-button" type="button" aria-label="刪除池子">刪除</button></div></article></template>
   <script src="app.js"></script>
 </body>
 </html>
