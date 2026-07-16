@@ -22,7 +22,7 @@ button { cursor: pointer; }
 .home-main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 .home-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: max(10px, env(safe-area-inset-top)) 0 10px; }
 .header-brand { display: flex; align-items: center; min-width: 0; gap: 10px; }
-.header-logo { display: block; flex: 0 0 58px; width: 58px; height: 58px; object-fit: contain; }
+.header-logo { display: block; flex: 0 0 88px; width: 88px; height: 88px; object-fit: contain; }
 .header-brand-copy { min-width: 0; }
 .header-brand-copy h1 { margin: 0 0 3px; font-family: "DFKai-SB", "BiauKai", "Noto Serif TC", serif; font-size: 25px; font-weight: 900; line-height: 1.1; letter-spacing: .01em; }
 .header-companion { margin: 0; color: var(--muted); font-size: 14px; font-weight: 650; line-height: 1.35; white-space: nowrap; }
