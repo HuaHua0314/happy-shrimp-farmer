@@ -2,108 +2,86 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#1f7a67">
-  <meta name="description" content="蝦農日常管理工具">
-  <title>開心蝦農</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="&#24555;&#27138;&#34662;&#36786;&#65292;&#38506;&#20320;&#39178;&#22909;&#27599;&#19968;&#25209;&#34662;">
+  <title>&#24555;&#27138;&#34662;&#36786;</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="homeView" class="view">
+  <div id="homeView" class="view home-view">
     <header class="home-header">
       <div>
-        <p class="eyebrow">蝦場日常管理</p>
-        <h1>開心蝦農</h1>
-        <p id="homeToday" class="today"></p>
+        <p id="greeting" class="greeting"></p>
+        <p class="greeting-subtitle">&#20170;&#22825;&#19968;&#36215;&#38506;&#20320;&#39178;&#22909;&#27599;&#19968;&#25209;&#34662;&#65281;</p>
       </div>
-      <div class="brand-mark" aria-hidden="true">🦐</div>
+      <button class="header-action" type="button" data-feature="notification" aria-label="&#36890;&#30693;">
+        <span aria-hidden="true">&#128276;</span><span class="notification-dot" aria-hidden="true"></span>
+      </button>
     </header>
 
     <main class="home-main">
-      <section class="menu-grid" aria-label="主選單">
-        <button class="menu-card menu-feed" type="button" data-feature="餵養">
-          <span class="menu-icon" aria-hidden="true">🟢</span><span>餵養</span>
-        </button>
-        <button class="menu-card menu-patrol" id="openPatrolButton" type="button">
-          <span class="menu-icon" aria-hidden="true">🔵</span><span>巡池</span>
-        </button>
-        <button class="menu-card menu-harvest" type="button" data-feature="出蝦">
-          <span class="menu-icon" aria-hidden="true">🟠</span><span>出蝦</span>
-        </button>
-        <button class="menu-card menu-stats" type="button" data-feature="統計">
-          <span class="menu-icon" aria-hidden="true">🟣</span><span>統計</span>
-        </button>
-        <button class="menu-card menu-ponds" type="button" data-feature="池子管理">
-          <span class="menu-icon" aria-hidden="true">🟤</span><span>池子管理</span>
-        </button>
-        <button class="menu-card menu-settings" type="button" data-feature="設定">
-          <span class="menu-icon" aria-hidden="true">⚙️</span><span>設定</span>
-        </button>
+      <section class="brand-card" aria-labelledby="brandTitle">
+        <img class="brand-logo" src="assets/images/happy-shrimp-farmer-logo.png" alt="&#24555;&#27138;&#34662;&#36786; Logo">
+        <h1 id="brandTitle">&#24555;&#27138;&#34662;&#36786;</h1>
+        <p class="brand-kicker">&#31185;&#25216;&#36000;&#36012;&#35352;&#37636;&#65292;&#32147;&#39511;&#36000;&#36012;&#25104;&#38263;</p>
+        <p class="brand-copy">&#24555;&#27138;&#34662;&#36786;&#65292;&#38506;&#20320;&#39178;&#22909;&#27599;&#19968;&#25209;&#34662;</p>
+        <p class="companion-days">&#38506;&#20276;&#20320;&#39178;&#34662;&#30340;&#31532; <strong id="useDays">1</strong> &#22825;</p>
       </section>
 
-      <section class="daily-summary" aria-label="今日進度">
-        <article>
-          <div class="summary-icon summary-patrol" aria-hidden="true">✓</div>
-          <div><p>今日巡池</p><strong><span id="homePatrolCount">0</span>/<span id="homePondCount">0</span></strong></div>
-        </article>
-        <article>
-          <div class="summary-icon summary-feed" aria-hidden="true">●</div>
-          <div><p>今日餵養</p><strong><span id="homeFeedCount">0</span>/<span id="homeFeedTotal">0</span></strong></div>
-        </article>
+      <section class="section-block" aria-labelledby="progressTitle">
+        <div class="section-title-row"><div><p class="section-kicker">TODAY</p><h2 id="progressTitle">&#20170;&#26085;&#36914;&#24230;</h2></div><p id="homeDate" class="section-note"></p></div>
+        <div class="progress-grid">
+          <article class="progress-item"><div class="progress-ring" id="feedRing"><span id="feedPercent">0%</span></div><div><h3>&#20170;&#26085;&#39173;&#39178;&#36914;&#24230;</h3><p><strong id="feedDone">0</strong> / <span id="feedTotal">0</span> &#27744;&#23436;&#25104;</p></div></article>
+          <article class="progress-item"><div class="progress-ring" id="patrolRing"><span id="patrolPercent">0%</span></div><div><h3>&#20170;&#26085;&#24033;&#27744;&#36914;&#24230;</h3><p><strong id="patrolDone">0</strong> / <span id="patrolTotal">0</span> &#27744;&#23436;&#25104;</p></div></article>
+          <article class="progress-item"><div class="progress-ring" id="fertilizeRing"><span id="fertilizePercent">0%</span></div><div><h3>&#20170;&#26085;&#19979;&#32933;&#36914;&#24230;</h3><p><strong id="fertilizeDone">0</strong> / <span id="fertilizeTotal">0</span> &#27744;&#23436;&#25104;</p></div></article>
+          <article class="progress-item"><div class="progress-ring" id="harvestRing"><span id="harvestPercent">0%</span></div><div><h3>&#20170;&#26085;&#20986;&#34662;&#36914;&#24230;</h3><p><strong id="harvestDone">0</strong> / <span id="harvestTotal">0</span> &#27744;&#23436;&#25104;</p></div></article>
+        </div>
+      </section>
+
+      <section class="ai-card" aria-labelledby="aiTitle"><div class="ai-icon" aria-hidden="true">AI</div><div><p class="ai-label">SMART FARMING</p><h2 id="aiTitle">AI&#25552;&#37266;</h2><p><strong>&#20170;&#26085;&#39178;&#27542;&#29376;&#27841;&#23559;&#25972;&#29702;&#22312;&#36889;&#35041;</strong><br>&#26410;&#20358;&#23559;&#20381;&#27599;&#26085;&#32000;&#37636;&#65292;&#25552;&#20379;&#39173;&#39178;&#12289;&#27700;&#36074;&#33287;&#24033;&#27744;&#24314;&#35696;&#12290;</p></div></section>
+
+      <section class="section-block" aria-labelledby="featuresTitle">
+        <div class="section-title-row"><div><p class="section-kicker">QUICK ACTIONS</p><h2 id="featuresTitle">&#24555;&#25463;&#21151;&#33021;</h2></div></div>
+        <div class="feature-grid">
+          <button class="feature-card" type="button" data-open-patrol><span class="feature-icon icon-feed">&#127793;</span><span>&#39173;&#39178;</span></button>
+          <button class="feature-card" type="button" data-open-patrol><span class="feature-icon icon-patrol">&#128167;</span><span>&#24033;&#27744;</span></button>
+          <button class="feature-card" type="button" data-feature="harvest"><span class="feature-icon icon-harvest">&#129424;</span><span>&#20986;&#34662;</span></button>
+          <button class="feature-card" type="button" data-feature="batch"><span class="feature-icon icon-batch">&#128203;</span><span>&#25209;&#27425;&#31649;&#29702;</span></button>
+          <button class="feature-card" type="button" data-open-patrol><span class="feature-icon icon-pond">&#12336;</span><span>&#27744;&#23376;&#31649;&#29702;</span></button>
+          <button class="feature-card" type="button" data-feature="inventory"><span class="feature-icon icon-inventory">&#128230;</span><span>&#24235;&#23384;</span></button>
+          <button class="feature-card" type="button" data-feature="finance"><span class="feature-icon icon-finance">&#36;</span><span>&#25910;&#25903;</span></button>
+          <button class="feature-card" type="button" data-feature="ai"><span class="feature-icon icon-ai">AI</span><span>AI</span></button>
+        </div>
+      </section>
+
+      <section class="section-block batch-section" aria-labelledby="batchTitle">
+        <div class="section-title-row"><div><p class="section-kicker">CURRENT BATCH</p><h2 id="batchTitle">&#30446;&#21069;&#39178;&#27542;&#25209;&#27425;</h2></div></div>
+        <div id="batchContent"></div>
       </section>
     </main>
+
+    <nav class="bottom-nav" aria-label="&#20027;&#35201;&#23566;&#35261;">
+      <button class="nav-item active" type="button"><span>&#8962;</span><strong>&#39318;&#38913;</strong></button>
+      <button class="nav-item" type="button" data-feature="journal"><span>&#128221;</span><strong>&#26085;&#35468;</strong></button>
+      <button class="nav-item nav-ai" type="button" data-feature="ai"><span>AI</span><strong>AI &#21161;&#29702;</strong></button>
+      <button class="nav-item" type="button" data-feature="notification"><span>&#128276;</span><strong>&#36890;&#30693;</strong></button>
+      <button class="nav-item" type="button" data-feature="profile"><span>&#9786;</span><strong>&#25105;&#30340;</strong></button>
+    </nav>
   </div>
 
-  <div id="patrolView" class="view" hidden>
-    <header class="topbar">
-      <button id="backHomeButton" class="back-button" type="button" aria-label="返回首頁">‹</button>
-      <div class="patrol-heading">
-        <p class="eyebrow">每日巡池</p>
-        <h1>巡池紀錄</h1>
-        <p id="today" class="today"></p>
-      </div>
-      <button id="addPondButton" class="button button-secondary" type="button">新增池子</button>
-    </header>
-
+  <div id="patrolView" class="view patrol-view" hidden>
+    <header class="topbar"><button id="backHomeButton" class="back-button" type="button" aria-label="&#36820;&#22238;&#39318;&#38913;">&#8249;</button><div class="patrol-heading"><p class="eyebrow">&#27599;&#26085;&#24033;&#27744;</p><h1>&#24033;&#34662;&#32000;&#37636;</h1><p id="today" class="today"></p></div><button id="addPondButton" class="button button-secondary" type="button">&#26032;&#22686;&#27744;&#23376;</button></header>
     <main>
-      <section class="summary" aria-labelledby="summaryTitle">
-        <div><p class="eyebrow">今日完成度</p><h2 id="summaryTitle"><span id="completedCount">0</span> / <span id="totalCount">0</span> 池已巡視</h2></div>
-        <div class="progress-row">
-          <div class="progress-track" role="progressbar" aria-label="今日巡池進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progressBar" class="progress-bar"></div></div>
-          <strong id="progressText">0%</strong>
-        </div>
-      </section>
-
-      <section aria-labelledby="pondListTitle">
-        <div class="section-heading">
-          <div><p class="eyebrow">池況列表</p><h2 id="pondListTitle">今日各池狀態</h2></div>
-          <div class="layout-control"><label for="gridColumns">每排顯示</label><select id="gridColumns" aria-label="每排顯示池子數"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-        </div>
-        <div id="pondList" class="pond-list"></div>
-        <div id="emptyState" class="empty-state" hidden><p>目前還沒有池子。</p><button class="button button-primary" type="button" data-action="add">新增第一個池子</button></div>
-      </section>
+      <section class="summary" aria-labelledby="summaryTitle"><div><p class="eyebrow">&#20170;&#26085;&#23436;&#25104;&#24230;</p><h2 id="summaryTitle"><span id="completedCount">0</span> / <span id="totalCount">0</span> &#27744;&#24050;&#24033;&#35222;</h2></div><div class="progress-row"><div class="progress-track" role="progressbar" aria-label="&#20170;&#26085;&#24033;&#27744;&#36914;&#24230;" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progressBar" class="progress-bar"></div></div><strong id="progressText">0%</strong></div></section>
+      <section aria-labelledby="pondListTitle"><div class="section-heading"><div><p class="eyebrow">&#27744;&#27841;&#21015;&#34920;</p><h2 id="pondListTitle">&#20170;&#26085;&#21508;&#27744;&#29376;&#24907;</h2></div><div class="layout-control"><label for="gridColumns">&#27599;&#25490;&#39023;&#31034;</label><select id="gridColumns" aria-label="&#27599;&#25490;&#39023;&#31034;&#27744;&#23376;&#25976;"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div></div><div id="pondList" class="pond-list"></div><div id="emptyState" class="empty-state" hidden><p>&#30446;&#21069;&#36996;&#27794;&#26377;&#27744;&#23376;&#12290;</p><button class="button button-primary" type="button" data-action="add">&#26032;&#22686;&#31532;&#19968;&#20491;&#27744;&#23376;</button></div></section>
     </main>
   </div>
 
-  <dialog id="developmentDialog" class="dialog dialog-small">
-    <div class="development-message"><div class="development-icon" aria-hidden="true">🛠️</div><h2 id="developmentTitle">功能開發中</h2><p>這項功能正在準備中，敬請期待。</p><button class="button button-primary" type="button" data-action="close-development">知道了</button></div>
-  </dialog>
-
-  <dialog id="recordDialog" class="dialog">
-    <form id="recordForm" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">今日紀錄</p><h2 id="dialogTitle">池子紀錄</h2></div><button class="icon-button" type="button" data-action="close" aria-label="關閉">×</button></div>
-      <fieldset><legend>巡池狀態</legend><label class="choice"><input type="radio" name="inspection" value="ok" required><span>✅ 狀況正常</span></label><label class="choice"><input type="radio" name="inspection" value="rest"><span>🟡 暫停巡視</span></label><label class="choice"><input type="radio" name="inspection" value="notInspected"><span>🔴 尚未巡視</span></label></fieldset>
-      <fieldset><legend>餵養狀態（可不填）</legend><label class="choice"><input type="radio" name="feeding" value="fed"><span>✅ 已餵養</span></label><label class="choice"><input type="radio" name="feeding" value="half"><span>🌓 半量餵養</span></label><label class="choice"><input type="radio" name="feeding" value="leftover"><span>⚠️ 有剩料</span></label><label class="choice"><input type="radio" name="feeding" value="notFed"><span>⭕ 未餵養</span></label></fieldset>
-      <label class="notes-label" for="waterColor">水色</label><input id="waterColor" name="waterColor" placeholder="例如：淡綠、透明" autocomplete="off">
-      <label class="notes-label" for="additives">添加物</label><input id="additives" name="additives" placeholder="例如：益生菌、礦物質" autocomplete="off">
-      <label class="notes-label" for="notes">備註</label><textarea id="notes" name="notes" rows="3" placeholder="記下需要特別留意的狀況"></textarea>
-      <div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close">取消</button><button class="button button-primary" type="submit">儲存紀錄</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="nameDialog" class="dialog dialog-small"><form id="nameForm" method="dialog"><div class="dialog-heading"><h2>新增池子</h2><button class="icon-button" type="button" data-action="close-name" aria-label="關閉">×</button></div><label class="notes-label" for="pondName">池子名稱</label><input id="pondName" name="pondName" maxlength="20" placeholder="例如：一號池" required><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-name">取消</button><button class="button button-primary" type="submit">新增</button></div></form></dialog>
-
-  <template id="pondTemplate"><article class="pond-card"><div class="pond-status-icon" aria-hidden="true"></div><div class="pond-info"><h3></h3><p class="status-text"></p><p class="record-time"></p></div><div class="pond-actions"><button class="button record-button" type="button"></button><button class="delete-button" type="button" aria-label="刪除池子">刪除</button></div></article></template>
+  <dialog id="developmentDialog" class="dialog dialog-small"><div class="development-message"><div class="development-icon" aria-hidden="true">&#128736;</div><h2>&#21151;&#33021;&#38283;&#30332;&#20013;&#12290;</h2><p>&#36889;&#38917;&#21151;&#33021;&#27491;&#22312;&#28310;&#20633;&#20013;&#65292;&#25964;&#35531;&#26399;&#24453;&#12290;</p><button class="button button-primary" type="button" data-action="close-development">&#30693;&#36947;&#20102;</button></div></dialog>
+  <dialog id="recordDialog" class="dialog"><form id="recordForm" method="dialog"><div class="dialog-heading"><div><p class="eyebrow">&#20170;&#26085;&#32000;&#37636;</p><h2 id="dialogTitle">&#27744;&#23376;&#32000;&#37636;</h2></div><button class="icon-button" type="button" data-action="close" aria-label="&#38364;&#38281;">&times;</button></div><fieldset><legend>&#24033;&#27744;&#29376;&#24907;</legend><label class="choice"><input type="radio" name="inspection" value="ok" required><span>&#9989; &#29376;&#27841;&#27491;&#24120;</span></label><label class="choice"><input type="radio" name="inspection" value="rest"><span>&#128993; &#26283;&#20572;&#24033;&#35222;</span></label><label class="choice"><input type="radio" name="inspection" value="notInspected"><span>&#128308; &#23578;&#26410;&#24033;&#35222;</span></label></fieldset><fieldset><legend>&#39173;&#39178;&#29376;&#24907;&#65288;&#21487;&#19981;&#22635;&#65289;</legend><label class="choice"><input type="radio" name="feeding" value="fed"><span>&#9989; &#24050;&#39173;&#39178;</span></label><label class="choice"><input type="radio" name="feeding" value="half"><span>&#9681; &#21322;&#37327;&#39173;&#39178;</span></label><label class="choice"><input type="radio" name="feeding" value="leftover"><span>&#9888; &#26377;&#21097;&#26009;</span></label><label class="choice"><input type="radio" name="feeding" value="notFed"><span>&#9711; &#26410;&#39173;&#39178;</span></label></fieldset><label class="notes-label" for="waterColor">&#27700;&#33394;</label><input id="waterColor" name="waterColor" autocomplete="off"><label class="notes-label" for="additives">&#28155;&#21152;&#29289;</label><input id="additives" name="additives" autocomplete="off"><label class="notes-label" for="notes">&#20633;&#35387;</label><textarea id="notes" name="notes" rows="3"></textarea><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close">&#21462;&#28040;</button><button class="button button-primary" type="submit">&#20786;&#23384;&#32000;&#37636;</button></div></form></dialog>
+  <dialog id="nameDialog" class="dialog dialog-small"><form id="nameForm" method="dialog"><div class="dialog-heading"><h2>&#26032;&#22686;&#27744;&#23376;</h2><button class="icon-button" type="button" data-action="close-name" aria-label="&#38364;&#38281;">&times;</button></div><label class="notes-label" for="pondName">&#27744;&#23376;&#21517;&#31281;</label><input id="pondName" name="pondName" maxlength="20" required><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-name">&#21462;&#28040;</button><button class="button button-primary" type="submit">&#26032;&#22686;</button></div></form></dialog>
+  <template id="pondTemplate"><article class="pond-card"><div class="pond-status-icon" aria-hidden="true"></div><div class="pond-info"><h3></h3><p class="status-text"></p><p class="record-time"></p></div><div class="pond-actions"><button class="button record-button" type="button"></button><button class="delete-button" type="button" aria-label="&#21034;&#38500;&#27744;&#23376;">&#21034;&#38500;</button></div></article></template>
   <script src="app.js"></script>
 </body>
 </html>
