@@ -11,9 +11,12 @@
 <body>
   <div id="homeView" class="view home-view">
     <header class="home-header">
-      <div>
-        <p id="greeting" class="greeting"></p>
-        <p class="greeting-subtitle">&#20170;&#22825;&#19968;&#36215;&#38506;&#20320;&#39178;&#22909;&#27599;&#19968;&#25209;&#34662;&#65281;</p>
+      <div class="header-brand">
+        <img class="header-logo" src="assets/images/happy-shrimp-farmer-logo.png" alt="&#24555;&#27138;&#34662;&#36786; Logo">
+        <div class="header-brand-copy">
+          <h1>&#24555;&#27138;&#34662;&#36786;</h1>
+          <p class="header-companion">&#38506;&#20276;&#20320;&#39178;&#34662;&#30340;&#31532; <strong id="useDays">1</strong> &#22825;</p>
+        </div>
       </div>
       <button class="header-action" type="button" data-feature="notification" aria-label="&#36890;&#30693;">
         <span aria-hidden="true">&#128276;</span><span class="notification-dot" aria-hidden="true"></span>
@@ -21,43 +24,32 @@
     </header>
 
     <main class="home-main">
-      <section class="brand-card" aria-labelledby="brandTitle">
-        <img class="brand-logo" src="assets/images/happy-shrimp-farmer-logo.png" alt="&#24555;&#27138;&#34662;&#36786; Logo">
-        <h1 id="brandTitle">&#24555;&#27138;&#34662;&#36786;</h1>
-        <p class="brand-kicker">&#31185;&#25216;&#36000;&#36012;&#35352;&#37636;&#65292;&#32147;&#39511;&#36000;&#36012;&#25104;&#38263;</p>
-        <p class="brand-copy">&#24555;&#27138;&#34662;&#36786;&#65292;&#38506;&#20320;&#39178;&#22909;&#27599;&#19968;&#25209;&#34662;</p>
-        <p class="companion-days">&#38506;&#20276;&#20320;&#39178;&#34662;&#30340;&#31532; <strong id="useDays">1</strong> &#22825;</p>
-      </section>
-
-      <section class="section-block" aria-labelledby="progressTitle">
-        <div class="section-title-row"><div><p class="section-kicker">TODAY</p><h2 id="progressTitle">&#20170;&#26085;&#36914;&#24230;</h2></div><p id="homeDate" class="section-note"></p></div>
-        <div class="progress-grid">
-          <article class="progress-item"><div class="progress-ring" id="feedRing"><span id="feedPercent">0%</span></div><div><h3>&#20170;&#26085;&#39173;&#39178;&#36914;&#24230;</h3><p><strong id="feedDone">0</strong> / <span id="feedTotal">0</span> &#27744;&#23436;&#25104;</p></div></article>
-          <article class="progress-item"><div class="progress-ring" id="patrolRing"><span id="patrolPercent">0%</span></div><div><h3>&#20170;&#26085;&#24033;&#27744;&#36914;&#24230;</h3><p><strong id="patrolDone">0</strong> / <span id="patrolTotal">0</span> &#27744;&#23436;&#25104;</p></div></article>
-          <article class="progress-item"><div class="progress-ring" id="fertilizeRing"><span id="fertilizePercent">0%</span></div><div><h3>&#20170;&#26085;&#19979;&#32933;&#36914;&#24230;</h3><p><strong id="fertilizeDone">0</strong> / <span id="fertilizeTotal">0</span> &#27744;&#23436;&#25104;</p></div></article>
-          <article class="progress-item"><div class="progress-ring" id="harvestRing"><span id="harvestPercent">0%</span></div><div><h3>&#20170;&#26085;&#20986;&#34662;&#36914;&#24230;</h3><p><strong id="harvestDone">0</strong> / <span id="harvestTotal">0</span> &#27744;&#23436;&#25104;</p></div></article>
-        </div>
-      </section>
-
-      <section class="ai-card" aria-labelledby="aiTitle"><div class="ai-icon" aria-hidden="true">AI</div><div><p class="ai-label">SMART FARMING</p><h2 id="aiTitle">AI&#25552;&#37266;</h2><p><strong>&#20170;&#26085;&#39178;&#27542;&#29376;&#27841;&#23559;&#25972;&#29702;&#22312;&#36889;&#35041;</strong><br>&#26410;&#20358;&#23559;&#20381;&#27599;&#26085;&#32000;&#37636;&#65292;&#25552;&#20379;&#39173;&#39178;&#12289;&#27700;&#36074;&#33287;&#24033;&#27744;&#24314;&#35696;&#12290;</p></div></section>
-
-      <section class="section-block" aria-labelledby="featuresTitle">
-        <div class="section-title-row"><div><p class="section-kicker">QUICK ACTIONS</p><h2 id="featuresTitle">&#24555;&#25463;&#21151;&#33021;</h2></div></div>
+      <section class="section-block primary-actions" aria-label="&#21151;&#33021;&#20837;&#21475;">
         <div class="feature-grid">
-          <button class="feature-card" type="button" data-open-patrol><span class="feature-icon icon-feed">&#127793;</span><span>&#39173;&#39178;</span></button>
-          <button class="feature-card" type="button" data-open-patrol><span class="feature-icon icon-patrol">&#128167;</span><span>&#24033;&#27744;</span></button>
+          <button class="feature-card" type="button" data-open-patrol><span class="feature-icon icon-feed">&#127793;</span><span>&#39221;&#39178;</span></button>
+          <button class="feature-card" type="button" data-open-patrol><span class="feature-icon icon-patrol">&#128167;</span><span>&#24033;&#34662;</span></button>
+          <button class="feature-card" type="button" data-feature="fertilize"><span class="feature-icon icon-fertilize">&#10024;</span><span>&#19979;&#32933;</span></button>
           <button class="feature-card" type="button" data-feature="harvest"><span class="feature-icon icon-harvest">&#129424;</span><span>&#20986;&#34662;</span></button>
-          <button class="feature-card" type="button" data-feature="batch"><span class="feature-icon icon-batch">&#128203;</span><span>&#25209;&#27425;&#31649;&#29702;</span></button>
           <button class="feature-card" type="button" data-open-patrol><span class="feature-icon icon-pond">&#12336;</span><span>&#27744;&#23376;&#31649;&#29702;</span></button>
           <button class="feature-card" type="button" data-feature="inventory"><span class="feature-icon icon-inventory">&#128230;</span><span>&#24235;&#23384;</span></button>
-          <button class="feature-card" type="button" data-feature="finance"><span class="feature-icon icon-finance">&#36;</span><span>&#25910;&#25903;</span></button>
-          <button class="feature-card" type="button" data-feature="ai"><span class="feature-icon icon-ai">AI</span><span>AI</span></button>
+          <button class="feature-card" type="button" data-feature="report"><span class="feature-icon icon-report">&#128202;</span><span>&#39178;&#27542;&#22577;&#21578;</span></button>
+          <button class="feature-card" type="button" data-feature="ai"><span class="feature-icon icon-ai">AI</span><span>AI &#21161;&#29702;</span></button>
         </div>
       </section>
 
       <section class="section-block batch-section" aria-labelledby="batchTitle">
         <div class="section-title-row"><div><p class="section-kicker">CURRENT BATCH</p><h2 id="batchTitle">&#30446;&#21069;&#39178;&#27542;&#25209;&#27425;</h2></div></div>
         <div id="batchContent"></div>
+      </section>
+
+      <section class="section-block progress-section" aria-labelledby="progressTitle">
+        <div class="section-title-row"><h2 id="progressTitle">&#20170;&#26085;&#36914;&#24230;</h2><p id="homeDate" class="section-note"></p></div>
+        <div class="progress-grid">
+          <article class="progress-item"><div class="progress-ring" id="feedRing"><span id="feedPercent">0%</span></div><h3>&#39221;&#39178;</h3><p><strong id="feedDone">0</strong> / <span id="feedTotal">0</span></p></article>
+          <article class="progress-item"><div class="progress-ring" id="patrolRing"><span id="patrolPercent">0%</span></div><h3>&#24033;&#34662;</h3><p><strong id="patrolDone">0</strong> / <span id="patrolTotal">0</span></p></article>
+          <article class="progress-item"><div class="progress-ring" id="fertilizeRing"><span id="fertilizePercent">0%</span></div><h3>&#19979;&#32933;</h3><p><strong id="fertilizeDone">0</strong> / <span id="fertilizeTotal">0</span></p></article>
+          <article class="progress-item"><div class="progress-ring" id="harvestRing"><span id="harvestPercent">0%</span></div><h3>&#20986;&#34662;</h3><p><strong id="harvestDone">0</strong> / <span id="harvestTotal">0</span></p></article>
+        </div>
       </section>
     </main>
 
@@ -79,7 +71,7 @@
   </div>
 
   <dialog id="developmentDialog" class="dialog dialog-small"><div class="development-message"><div class="development-icon" aria-hidden="true">&#128736;</div><h2>&#21151;&#33021;&#38283;&#30332;&#20013;&#12290;</h2><p>&#36889;&#38917;&#21151;&#33021;&#27491;&#22312;&#28310;&#20633;&#20013;&#65292;&#25964;&#35531;&#26399;&#24453;&#12290;</p><button class="button button-primary" type="button" data-action="close-development">&#30693;&#36947;&#20102;</button></div></dialog>
-  <dialog id="recordDialog" class="dialog"><form id="recordForm" method="dialog"><div class="dialog-heading"><div><p class="eyebrow">&#20170;&#26085;&#32000;&#37636;</p><h2 id="dialogTitle">&#27744;&#23376;&#32000;&#37636;</h2></div><button class="icon-button" type="button" data-action="close" aria-label="&#38364;&#38281;">&times;</button></div><fieldset><legend>&#24033;&#27744;&#29376;&#24907;</legend><label class="choice"><input type="radio" name="inspection" value="ok" required><span>&#9989; &#29376;&#27841;&#27491;&#24120;</span></label><label class="choice"><input type="radio" name="inspection" value="rest"><span>&#128993; &#26283;&#20572;&#24033;&#35222;</span></label><label class="choice"><input type="radio" name="inspection" value="notInspected"><span>&#128308; &#23578;&#26410;&#24033;&#35222;</span></label></fieldset><fieldset><legend>&#39173;&#39178;&#29376;&#24907;&#65288;&#21487;&#19981;&#22635;&#65289;</legend><label class="choice"><input type="radio" name="feeding" value="fed"><span>&#9989; &#24050;&#39173;&#39178;</span></label><label class="choice"><input type="radio" name="feeding" value="half"><span>&#9681; &#21322;&#37327;&#39173;&#39178;</span></label><label class="choice"><input type="radio" name="feeding" value="leftover"><span>&#9888; &#26377;&#21097;&#26009;</span></label><label class="choice"><input type="radio" name="feeding" value="notFed"><span>&#9711; &#26410;&#39173;&#39178;</span></label></fieldset><label class="notes-label" for="waterColor">&#27700;&#33394;</label><input id="waterColor" name="waterColor" autocomplete="off"><label class="notes-label" for="additives">&#28155;&#21152;&#29289;</label><input id="additives" name="additives" autocomplete="off"><label class="notes-label" for="notes">&#20633;&#35387;</label><textarea id="notes" name="notes" rows="3"></textarea><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close">&#21462;&#28040;</button><button class="button button-primary" type="submit">&#20786;&#23384;&#32000;&#37636;</button></div></form></dialog>
+  <dialog id="recordDialog" class="dialog"><form id="recordForm" method="dialog"><div class="dialog-heading"><div><p class="eyebrow">&#20170;&#26085;&#32000;&#37636;</p><h2 id="dialogTitle">&#27744;&#23376;&#32000;&#37636;</h2></div><button class="icon-button" type="button" data-action="close" aria-label="&#38364;&#38281;">&times;</button></div><fieldset><legend>&#24033;&#27744;&#29376;&#24907;</legend><label class="choice"><input type="radio" name="inspection" value="ok" required><span>&#9989; &#29376;&#27841;&#27491;&#24120;</span></label><label class="choice"><input type="radio" name="inspection" value="rest"><span>&#128993; &#26283;&#20572;&#24033;&#35222;</span></label><label class="choice"><input type="radio" name="inspection" value="notInspected"><span>&#128308; &#23578;&#26410;&#24033;&#35222;</span></label></fieldset><fieldset><legend>&#39221;&#39178;&#29376;&#24907;&#65288;&#21487;&#19981;&#22635;&#65289;</legend><label class="choice"><input type="radio" name="feeding" value="fed"><span>&#9989; &#24050;&#39221;&#39178;</span></label><label class="choice"><input type="radio" name="feeding" value="half"><span>&#9681; &#21322;&#37327;&#39221;&#39178;</span></label><label class="choice"><input type="radio" name="feeding" value="leftover"><span>&#9888; &#26377;&#21097;&#26009;</span></label><label class="choice"><input type="radio" name="feeding" value="notFed"><span>&#9711; &#26410;&#39221;&#39178;</span></label></fieldset><label class="notes-label" for="waterColor">&#27700;&#33394;</label><input id="waterColor" name="waterColor" autocomplete="off"><label class="notes-label" for="additives">&#28155;&#21152;&#29289;</label><input id="additives" name="additives" autocomplete="off"><label class="notes-label" for="notes">&#20633;&#35387;</label><textarea id="notes" name="notes" rows="3"></textarea><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close">&#21462;&#28040;</button><button class="button button-primary" type="submit">&#20786;&#23384;&#32000;&#37636;</button></div></form></dialog>
   <dialog id="nameDialog" class="dialog dialog-small"><form id="nameForm" method="dialog"><div class="dialog-heading"><h2>&#26032;&#22686;&#27744;&#23376;</h2><button class="icon-button" type="button" data-action="close-name" aria-label="&#38364;&#38281;">&times;</button></div><label class="notes-label" for="pondName">&#27744;&#23376;&#21517;&#31281;</label><input id="pondName" name="pondName" maxlength="20" required><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-name">&#21462;&#28040;</button><button class="button button-primary" type="submit">&#26032;&#22686;</button></div></form></dialog>
   <template id="pondTemplate"><article class="pond-card"><div class="pond-status-icon" aria-hidden="true"></div><div class="pond-info"><h3></h3><p class="status-text"></p><p class="record-time"></p></div><div class="pond-actions"><button class="button record-button" type="button"></button><button class="delete-button" type="button" aria-label="&#21034;&#38500;&#27744;&#23376;">&#21034;&#38500;</button></div></article></template>
   <script src="app.js"></script>

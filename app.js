@@ -168,9 +168,6 @@ function openRecord(id) {
   recordDialog.showModal();
 }
 
-const hour = new Date().getHours();
-const salutation = hour < 11 ? "\u65e9\u5b89" : hour < 18 ? "\u5348\u5b89" : "\u665a\u5b89";
-document.querySelector("#greeting").textContent = salutation;
 const formattedToday = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date());
 document.querySelector("#today").textContent = formattedToday;
 document.querySelector("#homeDate").textContent = new Intl.DateTimeFormat("zh-TW", { month: "long", day: "numeric", weekday: "short" }).format(new Date());
