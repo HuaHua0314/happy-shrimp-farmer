@@ -71,45 +71,11 @@ function formatStatusText(record) {
   return details.join(" \u00b7 ");
 }
 
-function setRing(id, done, total) {
-  const percent = total ? Math.min(100, Math.round(done / total * 100)) : 0;
-  document.querySelector(`#${id}`).style.setProperty("--progress", `${percent * 3.6}deg`);
-  document.querySelector(`#${id.replace("Ring", "Percent")}`).textContent = `${percent}%`;
-}
-
-function activeBatch() {
-  if (Array.isArray(state.batches)) {
-    return state.batches.find((batch) => batch && (batch.active === true || batch.status === "active")) || null;
-  }
-  return state.currentBatch || null;
-}
-
-function renderBatch() {
-  const container = document.querySelector("#batchContent");
-  const batch = activeBatch();
-  container.replaceChildren();
-  const card = document.createElement("article");
-  if (!batch) {
-    card.className = "empty-batch";
-    card.innerHTML = `<div class="empty-batch-icon" aria-hidden="true">&#12336;</div><div><h3>&#23578;&#26410;&#24314;&#31435;&#39178;&#27542;&#25209;&#27425;</h3><p>&#24314;&#31435;&#31532;&#19968;&#25209;&#34662;&#24460;&#65292;<br>&#36889;&#35041;&#23559;&#39023;&#31034;&#30446;&#21069;&#39178;&#27542;&#36914;&#24230;&#12290;</p></div>`;
-  } else {
-    card.className = "batch-card";
-    const name = document.createElement("h3");
-    name.textContent = batch.name || batch.title || "\u9032\u884c\u4e2d\u7684\u990a\u6b96\u6279\u6b21";
-    const detail = document.createElement("p");
-    detail.textContent = batch.pondName || batch.pond || batch.startDate || "\u6b63\u5728\u990a\u6b96\u4e2d";
-    card.append(name, detail);
-  }
-  container.append(card);
-}
-
 function render() {
   pondList.replaceChildren();
   pondList.style.gridTemplateColumns = `repeat(${gridSelect.value}, minmax(0, 1fr))`;
   const template = document.querySelector("#pondTemplate");
   let inspected = 0;
-  let fed = 0;
-  let fertilized = 0;
 
   state.ponds.forEach((pond) => {
     pond.records ||= {};
@@ -125,8 +91,6 @@ function render() {
     card.querySelector(".record-time").textContent = record?.time ? `\u7d00\u9304\u6642\u9593 ${record.time}` : "";
     card.querySelector(".record-button").textContent = record ? "\u4fee\u6539\u7d00\u9304" : "\u958b\u59cb\u7d00\u9304";
     if (inspection === "ok") inspected += 1;
-    if (record?.feeding && record.feeding !== "notFed") fed += 1;
-    if (record?.additives) fertilized += 1;
     pondList.append(card);
   });
 
@@ -137,13 +101,6 @@ function render() {
   document.querySelector("#progressBar").style.width = `${percent}%`;
   document.querySelector("#progressText").textContent = `${percent}%`;
   document.querySelector(".progress-track").setAttribute("aria-valuenow", percent);
-  [["feed", fed], ["patrol", inspected], ["fertilize", fertilized], ["harvest", 0]].forEach(([key, done]) => {
-    document.querySelector(`#${key}Done`).textContent = done;
-    document.querySelector(`#${key}Total`).textContent = total;
-    setRing(`${key}Ring`, done, total);
-  });
-  document.querySelector("#useDays").textContent = dayNumber();
-  renderBatch();
   emptyState.hidden = total > 0;
 }
 
@@ -170,8 +127,6 @@ function openRecord(id) {
 
 const formattedToday = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date());
 document.querySelector("#today").textContent = formattedToday;
-document.querySelector("#homeDate").textContent = new Intl.DateTimeFormat("zh-TW", { month: "long", day: "numeric", weekday: "short" }).format(new Date());
-
 document.querySelectorAll("[data-open-patrol]").forEach((button) => button.addEventListener("click", showPatrol));
 document.querySelectorAll("[data-feature]").forEach((button) => button.addEventListener("click", showDevelopment));
 document.querySelector("#backHomeButton").addEventListener("click", showHome);
