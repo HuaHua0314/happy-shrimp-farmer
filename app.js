@@ -330,17 +330,25 @@ function showFeedingPonds(zoneId) {
 
 function renderFeedingPonds() {
   const ponds = farmData.ponds.filter((pond) => pond.zoneId === currentFeedingZoneId).sort((a, b) => a.order - b.order);
+  const completedCount = ponds.filter((pond) => feedingCompletedToday(pond.id)).length;
   const list = document.querySelector("#feedingPondList");
   list.replaceChildren(...ponds.map((pond) => feedingPondItem(pond)));
   document.querySelector("#feedingPondEmptyState").hidden = ponds.length > 0;
+  document.querySelector("#feedingProgressText").textContent = `已完成：${completedCount} / ${ponds.length}`;
+  document.querySelector("#feedingAllComplete").hidden = ponds.length === 0 || completedCount !== ponds.length;
+}
+
+function feedingCompletedToday(pondId) {
+  return feedingData.records.some((record) => record.pondId === pondId && record.date === todayKey);
 }
 
 function feedingPondItem(pond) {
-  const completed = feedingData.records.some((record) => record.pondId === pond.id && record.date === todayKey);
+  const completed = feedingCompletedToday(pond.id);
   const button = document.createElement("button");
   button.className = `feeding-pond-item${completed ? " completed" : ""}`;
   button.type = "button";
-  button.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong><small>${completed ? "已完成" : "未完成"}</small>`;
+  button.setAttribute("aria-label", `${pond.name}，今天${completed ? "已完成" : "尚未完成"}餵蝦`);
+  button.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong>`;
   button.querySelector("strong").textContent = pond.name;
   button.addEventListener("click", () => showFeedingRecord(pond.id));
   return button;
