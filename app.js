@@ -23,6 +23,9 @@ let pendingPhone = "";
 let onboardingStep = 1;
 let editingZoneId = null;
 let draggedZoneElement = null;
+let currentPondZoneId = null;
+let editingFarmPondId = null;
+let draggedPondElement = null;
 
 const authView = document.querySelector("#authView");
 const onboardingView = document.querySelector("#onboardingView");
@@ -31,6 +34,7 @@ const patrolView = document.querySelector("#patrolView");
 const settingsView = document.querySelector("#settingsView");
 const zoneManagementView = document.querySelector("#zoneManagementView");
 const pondManagementView = document.querySelector("#pondManagementView");
+const pondZoneDetailView = document.querySelector("#pondZoneDetailView");
 const pondList = document.querySelector("#pondList");
 const emptyState = document.querySelector("#emptyState");
 const gridSelect = document.querySelector("#gridColumns");
@@ -42,6 +46,8 @@ const developmentDialog = document.querySelector("#developmentDialog");
 const zoneEditorDialog = document.querySelector("#zoneEditorDialog");
 const zoneEditorForm = document.querySelector("#zoneEditorForm");
 const farmEditorDialog = document.querySelector("#farmEditorDialog");
+const pondEditorDialog = document.querySelector("#pondEditorDialog");
+const pondEditorForm = document.querySelector("#pondEditorForm");
 
 function localDateKey(date) {
   const year = date.getFullYear();
@@ -80,7 +86,7 @@ function normalizeFarmData(saved) {
   return {
     farm: saved?.farm || null,
     zones,
-    ponds: Array.isArray(saved?.ponds) ? saved.ponds.map((pond) => ({ ...pond, status: pond.status || "active" })) : [],
+    ponds: Array.isArray(saved?.ponds) ? saved.ponds.map((pond, index) => ({ ...pond, status: pond.status || "active", order: Number.isFinite(pond.order) ? pond.order : index })) : [],
     onboardingCompleted: saved?.onboardingCompleted === true
   };
 }
@@ -121,7 +127,7 @@ function syncFarmPondsToPatrol() {
 }
 
 function hideAppViews() {
-  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView, pondManagementView].forEach((view) => { view.hidden = true; });
+  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView].forEach((view) => { view.hidden = true; });
 }
 
 function routeApp() {
@@ -217,7 +223,8 @@ function addFarmPond(zoneId, name, errorElement) {
   if (!farmData.zones.some((zone) => zone.id === zoneId)) { errorElement.textContent = "請先選擇所屬區域。"; return false; }
   if (!cleaned) { errorElement.textContent = "請輸入池子名稱。"; return false; }
   if (farmData.ponds.some((pond) => sameName(pond.name, cleaned))) { errorElement.textContent = "這個池子名稱已經使用過了。"; return false; }
-  farmData.ponds.push({ id: createId("pond"), name: cleaned, zoneId, status: "active" });
+  const order = farmData.ponds.filter((pond) => pond.zoneId === zoneId).length;
+  farmData.ponds.push({ id: createId("pond"), name: cleaned, zoneId, status: "active", order });
   errorElement.textContent = "";
   saveFarmData();
   syncFarmPondsToPatrol();
@@ -357,19 +364,77 @@ function showPondManagement() {
 }
 
 function renderPondManagement() {
-  fillZoneSelect(document.querySelector("#settingsPondZone"));
-  const pondListElement = document.querySelector("#settingsPondList");
-  pondListElement.replaceChildren(...farmData.ponds.map((pond) => managePondItem(pond)));
+  const list = document.querySelector("#pondZoneList");
+  list.replaceChildren(...farmData.zones.map((zone) => pondZoneItem(zone)));
+  document.querySelector("#pondZoneEmptyState").hidden = farmData.zones.length > 0;
 }
 
-function managePondItem(pond) {
-  const row = document.createElement("div");
-  row.className = "manage-item pond-manage-item";
-  row.dataset.pondId = pond.id;
-  row.innerHTML = `<input class="flow-input" aria-label="池子名稱" maxlength="30"><select class="flow-input" aria-label="池子狀態"><option value="active">使用中</option><option value="rest">休息</option></select><button class="button button-secondary" type="button" data-action="save-pond">儲存</button>`;
-  row.querySelector("input").value = pond.name;
-  row.querySelector("select").value = pond.status || "active";
-  return row;
+function pondZoneItem(zone) {
+  const button = document.createElement("button");
+  button.className = "settings-menu-item";
+  button.type = "button";
+  const count = farmData.ponds.filter((pond) => pond.zoneId === zone.id).length;
+  button.innerHTML = `<span><strong></strong><small>${count} 個池子</small></span><b aria-hidden="true">›</b>`;
+  button.querySelector("strong").textContent = zone.name;
+  button.addEventListener("click", () => showPondZone(zone.id));
+  return button;
+}
+
+function showPondZone(zoneId) {
+  const zone = farmData.zones.find((item) => item.id === zoneId);
+  if (!zone) { showPondManagement(); return; }
+  currentPondZoneId = zoneId;
+  hideAppViews();
+  pondZoneDetailView.hidden = false;
+  document.querySelector("#pondZoneTitle").textContent = zone.name;
+  renderZonePonds();
+  window.scrollTo(0, 0);
+}
+
+function renderZonePonds() {
+  const ponds = farmData.ponds.filter((pond) => pond.zoneId === currentPondZoneId).sort((a, b) => a.order - b.order);
+  const list = document.querySelector("#zonePondList");
+  list.replaceChildren(...ponds.map((pond) => zonePondItem(pond)));
+  document.querySelector("#zonePondEmptyState").hidden = ponds.length > 0;
+}
+
+function zonePondItem(pond) {
+  const item = document.createElement("article");
+  item.className = "zone-sort-item pond-sort-item";
+  item.dataset.pondId = pond.id;
+  item.draggable = true;
+  const handle = document.createElement("button");
+  handle.className = "pond-drag-handle";
+  handle.type = "button";
+  handle.setAttribute("aria-label", "拖曳排序");
+  handle.textContent = "☰";
+  const name = document.createElement("button");
+  name.className = "pond-name-button";
+  name.type = "button";
+  name.innerHTML = `<strong></strong><small>${pond.status === "rest" ? "休息" : "使用中"}</small>`;
+  name.querySelector("strong").textContent = pond.name;
+  name.addEventListener("click", () => openPondEditor(pond.id));
+  item.append(handle, name);
+  return item;
+}
+
+function openPondEditor(pondId = null) {
+  editingFarmPondId = pondId;
+  const pond = farmData.ponds.find((item) => item.id === pondId);
+  document.querySelector("#pondEditorTitle").textContent = pond ? "修改池子" : "新增池子";
+  document.querySelector("#pondEditorSubmit").textContent = pond ? "儲存" : "新增";
+  document.querySelector("#pondEditorName").value = pond?.name || "";
+  document.querySelector("#pondEditorStatus").value = pond?.status || "active";
+  document.querySelector("#pondEditorError").textContent = "";
+  pondEditorDialog.showModal();
+  document.querySelector("#pondEditorName").focus();
+}
+
+function persistPondOrder() {
+  const ids = [...document.querySelectorAll("#zonePondList [data-pond-id]")].map((item) => item.dataset.pondId);
+  farmData.ponds.filter((pond) => pond.zoneId === currentPondZoneId).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)).forEach((pond, index) => { pond.order = index; });
+  saveFarmData();
+  renderZonePonds();
 }
 
 function openRecord(id) {
@@ -447,11 +512,27 @@ document.querySelector("#settingsFarmForm").addEventListener("submit", (event) =
   renderSettings();
 });
 
-document.querySelector("#settingsPondForm").addEventListener("submit", (event) => {
+pondEditorForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const zoneId = document.querySelector("#settingsPondZone").value;
-  const input = document.querySelector("#settingsPondName");
-  if (addFarmPond(zoneId, input.value, document.querySelector("#settingsPondError"))) { input.value = ""; renderPondManagement(); }
+  const name = cleanName(event.currentTarget.elements.pondName.value);
+  const status = event.currentTarget.elements.status.value;
+  const error = document.querySelector("#pondEditorError");
+  if (!name) { error.textContent = "請輸入池子名稱。"; return; }
+  if (farmData.ponds.some((pond) => pond.id !== editingFarmPondId && sameName(pond.name, name))) {
+    error.textContent = "這個池子名稱已經使用過了。";
+    return;
+  }
+  const pond = farmData.ponds.find((item) => item.id === editingFarmPondId);
+  if (pond) { pond.name = name; pond.status = status; }
+  else {
+    const order = farmData.ponds.filter((item) => item.zoneId === currentPondZoneId).length;
+    farmData.ponds.push({ id: createId("pond"), name, zoneId: currentPondZoneId, status, order });
+  }
+  error.textContent = "";
+  saveFarmData();
+  syncFarmPondsToPatrol();
+  pondEditorDialog.close();
+  renderZonePonds();
 });
 
 zoneEditorForm.addEventListener("submit", (event) => {
@@ -526,6 +607,61 @@ zoneManagementList.addEventListener("pointercancel", () => {
   draggedZoneElement?.classList.remove("dragging");
   draggedZoneElement = null;
   renderZoneManagement();
+});
+
+document.querySelector("#addPondFab").addEventListener("click", () => openPondEditor());
+
+const zonePondList = document.querySelector("#zonePondList");
+zonePondList.addEventListener("dragstart", (event) => {
+  draggedPondElement = event.target.closest(".pond-sort-item");
+  if (!draggedPondElement) return;
+  draggedPondElement.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+});
+zonePondList.addEventListener("dragover", (event) => {
+  if (!draggedPondElement) return;
+  event.preventDefault();
+  const target = event.target.closest(".pond-sort-item");
+  if (!target || target === draggedPondElement) return;
+  const after = event.clientY > target.getBoundingClientRect().top + target.offsetHeight / 2;
+  zonePondList.insertBefore(draggedPondElement, after ? target.nextSibling : target);
+});
+zonePondList.addEventListener("drop", (event) => {
+  event.preventDefault();
+  if (!draggedPondElement) return;
+  draggedPondElement.classList.remove("dragging");
+  persistPondOrder();
+  draggedPondElement = null;
+});
+zonePondList.addEventListener("dragend", () => {
+  draggedPondElement?.classList.remove("dragging");
+  draggedPondElement = null;
+});
+zonePondList.addEventListener("pointerdown", (event) => {
+  const handle = event.target.closest(".pond-drag-handle");
+  if (!handle || event.pointerType === "mouse") return;
+  draggedPondElement = handle.closest(".pond-sort-item");
+  draggedPondElement.classList.add("dragging");
+  handle.setPointerCapture(event.pointerId);
+  event.preventDefault();
+});
+zonePondList.addEventListener("pointermove", (event) => {
+  if (!draggedPondElement || event.pointerType === "mouse") return;
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".pond-sort-item");
+  if (!target || target === draggedPondElement) return;
+  const after = event.clientY > target.getBoundingClientRect().top + target.offsetHeight / 2;
+  zonePondList.insertBefore(draggedPondElement, after ? target.nextSibling : target);
+});
+zonePondList.addEventListener("pointerup", (event) => {
+  if (!draggedPondElement || event.pointerType === "mouse") return;
+  draggedPondElement.classList.remove("dragging");
+  draggedPondElement = null;
+  persistPondOrder();
+});
+zonePondList.addEventListener("pointercancel", () => {
+  draggedPondElement?.classList.remove("dragging");
+  draggedPondElement = null;
+  renderZonePonds();
 });
 
 document.querySelectorAll("[data-feature]").forEach((button) => button.addEventListener("click", () => {
@@ -603,20 +739,13 @@ document.addEventListener("click", (event) => {
     if (!farmData.ponds.length) document.querySelector("#pondSetupError").textContent = "請至少建立一個池子。";
     else { farmData.onboardingCompleted = true; saveFarmData(); syncFarmPondsToPatrol(); showHome(); }
   }
-  if (action === "save-pond") {
-    const row = event.target.closest("[data-pond-id]");
-    const pond = farmData.ponds.find((item) => item.id === row?.dataset.pondId);
-    const name = cleanName(row?.querySelector("input").value);
-    if (!pond || !name || farmData.ponds.some((item) => item.id !== pond.id && sameName(item.name, name))) {
-      document.querySelector("#settingsPondError").textContent = !name ? "池子名稱不可空白。" : "池子名稱不可重複。";
-    } else { pond.name = name; pond.status = row.querySelector("select").value; document.querySelector("#settingsPondError").textContent = ""; saveFarmData(); syncFarmPondsToPatrol(); renderPondManagement(); }
-  }
   if (action === "add") nameDialog.showModal();
   if (action === "close") recordDialog.close();
   if (action === "close-name") nameDialog.close();
   if (action === "close-development") developmentDialog.close();
   if (action === "close-zone-editor") zoneEditorDialog.close();
   if (action === "close-farm-editor") farmEditorDialog.close();
+  if (action === "close-pond-editor") pondEditorDialog.close();
 });
 
 document.querySelector("#today").textContent = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date());

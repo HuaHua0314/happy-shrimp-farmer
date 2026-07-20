@@ -154,6 +154,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .zone-name { overflow: hidden; padding: 7px 2px; color: var(--ink); font-size: 1.08rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .zone-edit-button { display: grid; place-items: center; width: 42px; height: 44px; border: 0; border-radius: 13px; background: transparent; font-size: 1.05rem; }
 .zone-edit-button:active { background: #f2f2f3; }
+.pond-sort-item { grid-template-columns: 42px minmax(0, 1fr); }
+.pond-drag-handle { display: grid; place-items: center; width: 42px; height: 48px; border: 0; background: transparent; color: #9a9a9f; font-size: 1.25rem; cursor: grab; touch-action: none; }
+.pond-name-button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; border: 0; padding: 6px 8px 6px 2px; background: transparent; color: var(--ink); text-align: left; }
+.pond-name-button strong { overflow: hidden; font-size: 1.05rem; text-overflow: ellipsis; white-space: nowrap; }
+.pond-name-button small { flex: 0 0 auto; border-radius: 99px; padding: 4px 8px; background: #f3f3f4; color: var(--muted); font-size: .75rem; font-weight: 700; }
 .zone-fab { position: fixed; z-index: 15; right: max(22px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom)); display: grid; place-items: center; width: 62px; height: 62px; border: 0; border-radius: 50%; background: var(--red); color: white; box-shadow: 0 12px 30px rgba(232,72,67,.32); font-size: 2rem; line-height: 1; }
 @media (max-width: 600px) {
   .topbar { grid-template-columns: auto 1fr; } .topbar > .button { grid-column: 1 / -1; width: 100%; }
