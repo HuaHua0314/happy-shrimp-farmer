@@ -349,7 +349,7 @@ function feedingPondItem(pond) {
   item.type = "button";
   item.setAttribute("role", "listitem");
   item.setAttribute("aria-label", `${pond.name}，今天${completed ? "已完成" : "尚未完成"}餵蝦`);
-  item.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong>`;
+  item.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong><small>${completed ? "已完成" : "未完成"}</small>`;
   item.querySelector("strong").textContent = pond.name;
   item.addEventListener("click", () => showFeedingRecord(pond.id));
   return item;
@@ -392,7 +392,7 @@ function showFeedingRecord(pondId) {
   hideAppViews();
   feedingRecordView.hidden = false;
   document.querySelector("#feedingPondTitle").textContent = pond.name;
-  document.querySelector("#feedingDate").textContent = new Intl.DateTimeFormat("zh-TW", { month: "long", day: "numeric" }).format(new Date());
+  document.querySelector("#feedingDate").textContent = "今天";
   document.querySelector("#feedingTime").textContent = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
   feedingRecordForm.reset();
   document.querySelector("#feedingRecordError").textContent = "";
