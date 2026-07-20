@@ -310,16 +310,17 @@ function zoneSortItem(zone, index) {
   handle.className = "zone-drag-handle";
   handle.type = "button";
   handle.setAttribute("aria-label", "拖曳排序");
-  handle.textContent = "⠿";
-  const name = document.createElement("button");
-  name.className = "zone-name-button";
-  name.type = "button";
+  handle.textContent = "☰";
+  const name = document.createElement("span");
+  name.className = "zone-name";
   name.textContent = zone.name;
-  name.addEventListener("click", () => openZoneEditor(zone.id));
-  const order = document.createElement("span");
-  order.className = "zone-order";
-  order.textContent = String(index + 1);
-  item.append(handle, name, order);
+  const edit = document.createElement("button");
+  edit.className = "zone-edit-button";
+  edit.type = "button";
+  edit.setAttribute("aria-label", `修改${zone.name}`);
+  edit.textContent = "✏️";
+  edit.addEventListener("click", () => openZoneEditor(zone.id));
+  item.append(handle, name, edit);
   return item;
 }
 
@@ -327,6 +328,7 @@ function openZoneEditor(zoneId = null) {
   editingZoneId = zoneId;
   const zone = farmData.zones.find((item) => item.id === zoneId);
   document.querySelector("#zoneEditorTitle").textContent = zone ? "修改區域" : "新增區域";
+  document.querySelector("#zoneEditorSubmit").textContent = zone ? "儲存" : "新增";
   document.querySelector("#zoneEditorName").value = zone?.name || "";
   document.querySelector("#zoneEditorError").textContent = "";
   zoneEditorDialog.showModal();
@@ -343,19 +345,8 @@ function persistZoneOrder() {
 
 function renderSettings() {
   fillZoneSelect(document.querySelector("#settingsPondZone"));
-  const zoneList = document.querySelector("#settingsZoneList");
-  zoneList.replaceChildren(...farmData.zones.map((zone) => manageZoneItem(zone)));
   const pondListElement = document.querySelector("#settingsPondList");
   pondListElement.replaceChildren(...farmData.ponds.map((pond) => managePondItem(pond)));
-}
-
-function manageZoneItem(zone) {
-  const row = document.createElement("div");
-  row.className = "manage-item";
-  row.dataset.zoneId = zone.id;
-  row.innerHTML = `<input class="flow-input" aria-label="區域名稱" maxlength="30"><button class="button button-secondary" type="button" data-action="save-zone">儲存</button>`;
-  row.querySelector("input").value = zone.name;
-  return row;
 }
 
 function managePondItem(pond) {
@@ -439,12 +430,6 @@ document.querySelector("#settingsFarmForm").addEventListener("submit", (event) =
   farmData.farm = { id: farmData.farm?.id || createId("farm"), name };
   document.querySelector("#settingsFarmError").textContent = "";
   saveFarmData();
-});
-
-document.querySelector("#settingsZoneForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const input = document.querySelector("#settingsZoneName");
-  if (addZone(input.value, document.querySelector("#settingsZoneError"))) { input.value = ""; renderSettings(); }
 });
 
 document.querySelector("#settingsPondForm").addEventListener("submit", (event) => {
@@ -591,6 +576,7 @@ document.addEventListener("click", (event) => {
   if (!action) return;
   if (action === "back-phone") showPhoneStep();
   if (action === "open-full-settings") showSettings();
+  if (action === "open-zone-management") showZoneManagement();
   if (action === "skip-onboarding") {
     farmData.onboardingCompleted = true;
     saveFarmData();
@@ -604,14 +590,6 @@ document.addEventListener("click", (event) => {
   if (action === "finish-onboarding") {
     if (!farmData.ponds.length) document.querySelector("#pondSetupError").textContent = "請至少建立一個池子。";
     else { farmData.onboardingCompleted = true; saveFarmData(); syncFarmPondsToPatrol(); showHome(); }
-  }
-  if (action === "save-zone") {
-    const row = event.target.closest("[data-zone-id]");
-    const zone = farmData.zones.find((item) => item.id === row?.dataset.zoneId);
-    const name = cleanName(row?.querySelector("input").value);
-    if (!zone || !name || farmData.zones.some((item) => item.id !== zone.id && sameName(item.name, name))) {
-      document.querySelector("#settingsZoneError").textContent = !name ? "區域名稱不可空白。" : "區域名稱不可重複。";
-    } else { zone.name = name; document.querySelector("#settingsZoneError").textContent = ""; saveFarmData(); renderSettings(); }
   }
   if (action === "save-pond") {
     const row = event.target.closest("[data-pond-id]");
