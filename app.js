@@ -30,6 +30,7 @@ const homeView = document.querySelector("#homeView");
 const patrolView = document.querySelector("#patrolView");
 const settingsView = document.querySelector("#settingsView");
 const zoneManagementView = document.querySelector("#zoneManagementView");
+const pondManagementView = document.querySelector("#pondManagementView");
 const pondList = document.querySelector("#pondList");
 const emptyState = document.querySelector("#emptyState");
 const gridSelect = document.querySelector("#gridColumns");
@@ -40,6 +41,7 @@ const nameForm = document.querySelector("#nameForm");
 const developmentDialog = document.querySelector("#developmentDialog");
 const zoneEditorDialog = document.querySelector("#zoneEditorDialog");
 const zoneEditorForm = document.querySelector("#zoneEditorForm");
+const farmEditorDialog = document.querySelector("#farmEditorDialog");
 
 function localDateKey(date) {
   const year = date.getFullYear();
@@ -119,7 +121,7 @@ function syncFarmPondsToPatrol() {
 }
 
 function hideAppViews() {
-  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView].forEach((view) => { view.hidden = true; });
+  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView, pondManagementView].forEach((view) => { view.hidden = true; });
 }
 
 function routeApp() {
@@ -280,8 +282,6 @@ function showDevelopment() { developmentDialog.showModal(); }
 function showSettings() {
   hideAppViews();
   settingsView.hidden = false;
-  document.querySelector("#settingsPhone").textContent = account.phone;
-  document.querySelector("#settingsFarmName").value = farmData.farm?.name || "";
   renderSettings();
   window.scrollTo(0, 0);
 }
@@ -344,6 +344,19 @@ function persistZoneOrder() {
 }
 
 function renderSettings() {
+  document.querySelector("#settingsFarmSummary").textContent = farmData.farm?.name || "尚未設定";
+  document.querySelector("#settingsZoneSummary").textContent = `${farmData.zones.length} 個區域`;
+  document.querySelector("#settingsPondSummary").textContent = `${farmData.ponds.length} 個池子`;
+}
+
+function showPondManagement() {
+  hideAppViews();
+  pondManagementView.hidden = false;
+  renderPondManagement();
+  window.scrollTo(0, 0);
+}
+
+function renderPondManagement() {
   fillZoneSelect(document.querySelector("#settingsPondZone"));
   const pondListElement = document.querySelector("#settingsPondList");
   pondListElement.replaceChildren(...farmData.ponds.map((pond) => managePondItem(pond)));
@@ -430,13 +443,15 @@ document.querySelector("#settingsFarmForm").addEventListener("submit", (event) =
   farmData.farm = { id: farmData.farm?.id || createId("farm"), name };
   document.querySelector("#settingsFarmError").textContent = "";
   saveFarmData();
+  farmEditorDialog.close();
+  renderSettings();
 });
 
 document.querySelector("#settingsPondForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const zoneId = document.querySelector("#settingsPondZone").value;
   const input = document.querySelector("#settingsPondName");
-  if (addFarmPond(zoneId, input.value, document.querySelector("#settingsPondError"))) { input.value = ""; renderSettings(); }
+  if (addFarmPond(zoneId, input.value, document.querySelector("#settingsPondError"))) { input.value = ""; renderPondManagement(); }
 });
 
 zoneEditorForm.addEventListener("submit", (event) => {
@@ -513,20 +528,10 @@ zoneManagementList.addEventListener("pointercancel", () => {
   renderZoneManagement();
 });
 
-document.querySelector("#logoutButton").addEventListener("click", () => {
-  account = { phone: account.phone || "", isLoggedIn: false };
-  saveAccount();
-  hideAppViews();
-  authView.hidden = false;
-  document.querySelector("#phoneForm").reset();
-  document.querySelector("#codeForm").reset();
-  showPhoneStep();
-});
-
 document.querySelectorAll("[data-feature]").forEach((button) => button.addEventListener("click", () => {
   const feature = button.dataset.feature;
   if (feature === "patrol") showPatrol();
-  else if (feature === "settings" || feature === "profile") showZoneManagement();
+  else if (feature === "settings" || feature === "profile") showSettings();
   else showDevelopment();
 }));
 document.querySelectorAll("[data-home]").forEach((button) => button.addEventListener("click", showHome));
@@ -576,7 +581,14 @@ document.addEventListener("click", (event) => {
   if (!action) return;
   if (action === "back-phone") showPhoneStep();
   if (action === "open-full-settings") showSettings();
+  if (action === "open-farm-editor") {
+    document.querySelector("#settingsFarmName").value = farmData.farm?.name || "";
+    document.querySelector("#settingsFarmError").textContent = "";
+    farmEditorDialog.showModal();
+    document.querySelector("#settingsFarmName").focus();
+  }
   if (action === "open-zone-management") showZoneManagement();
+  if (action === "open-pond-management") showPondManagement();
   if (action === "skip-onboarding") {
     farmData.onboardingCompleted = true;
     saveFarmData();
@@ -597,13 +609,14 @@ document.addEventListener("click", (event) => {
     const name = cleanName(row?.querySelector("input").value);
     if (!pond || !name || farmData.ponds.some((item) => item.id !== pond.id && sameName(item.name, name))) {
       document.querySelector("#settingsPondError").textContent = !name ? "池子名稱不可空白。" : "池子名稱不可重複。";
-    } else { pond.name = name; pond.status = row.querySelector("select").value; document.querySelector("#settingsPondError").textContent = ""; saveFarmData(); syncFarmPondsToPatrol(); renderSettings(); }
+    } else { pond.name = name; pond.status = row.querySelector("select").value; document.querySelector("#settingsPondError").textContent = ""; saveFarmData(); syncFarmPondsToPatrol(); renderPondManagement(); }
   }
   if (action === "add") nameDialog.showModal();
   if (action === "close") recordDialog.close();
   if (action === "close-name") nameDialog.close();
   if (action === "close-development") developmentDialog.close();
   if (action === "close-zone-editor") zoneEditorDialog.close();
+  if (action === "close-farm-editor") farmEditorDialog.close();
 });
 
 document.querySelector("#today").textContent = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date());

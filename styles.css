@@ -119,15 +119,23 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .step-indicator span { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid var(--line); border-radius: 50%; background: white; color: var(--muted); font-weight: 850; }
 .step-indicator span.active { border-color: var(--red); background: var(--red); color: white; }
 .step-indicator i { width: 42px; height: 2px; background: var(--line); }
-.settings-view { min-height: 100vh; padding-bottom: 40px; background: #fafafa; }
+.settings-view { min-height: 100vh; padding-bottom: calc(88px + env(safe-area-inset-bottom)); background: #fafafa; }
 .settings-header, .settings-main { width: min(720px, calc(100% - 32px)); margin-inline: auto; }
-.settings-header { display: flex; align-items: center; gap: 14px; padding: max(22px, env(safe-area-inset-top)) 0 18px; }
-.settings-header h1 { margin: 0; font-size: 2rem; }
+.settings-header { display: flex; align-items: center; gap: 12px; padding: max(16px, env(safe-area-inset-top)) 0 12px; }
+.settings-header h1 { margin: 0; font-size: 1.65rem; }
 .settings-main { display: grid; gap: 14px; }
 .settings-card { border-radius: 24px; padding: 21px; }
 .settings-card h2 { margin-bottom: 17px; }
 .settings-phone { margin: 0 0 16px; color: var(--muted); }
 .settings-link-copy { margin: 0 0 14px; color: var(--muted); }
+.settings-menu { overflow: hidden; border: 1px solid var(--line); border-radius: 21px; background: white; box-shadow: 0 7px 22px rgba(0,0,0,.04); }
+.settings-menu-item { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 68px; border: 0; border-bottom: 1px solid var(--line); padding: 10px 15px 10px 17px; background: white; color: var(--ink); text-align: left; }
+.settings-menu-item:last-child { border-bottom: 0; }
+.settings-menu-item:active { background: #f8f8f9; }
+.settings-menu-item span { display: grid; gap: 3px; }
+.settings-menu-item strong { font-size: 1rem; }
+.settings-menu-item small { color: var(--muted); font-size: .78rem; font-weight: 600; }
+.settings-menu-item b { color: #aaa5a1; font-size: 1.6rem; font-weight: 400; }
 .manage-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; border-top: 1px solid var(--line); padding: 13px 0; }
 .manage-item:first-child { margin-top: 8px; }
 .manage-item .flow-input { margin: 0; }
