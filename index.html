@@ -9,6 +9,62 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="authView" class="view flow-view" hidden>
+    <main class="flow-shell">
+      <img class="flow-logo" src="assets/images/&#26032;&#30340;LOGO1150716.png" alt="快樂蝦農">
+      <section class="flow-card" aria-labelledby="authTitle">
+        <div id="phoneStep">
+          <p class="flow-eyebrow">歡迎使用</p>
+          <h1 id="authTitle">手機登入</h1>
+          <p class="flow-copy">輸入台灣手機號碼，開始設定你的蝦場。</p>
+          <form id="phoneForm" novalidate>
+            <label class="field-label" for="loginPhone">手機號碼</label>
+            <input class="flow-input" id="loginPhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="0912345678" required>
+            <p id="phoneError" class="form-error" role="alert"></p>
+            <button class="button button-primary button-block" type="submit">取得驗證碼</button>
+          </form>
+        </div>
+        <div id="codeStep" hidden>
+          <p class="flow-eyebrow">手機驗證</p>
+          <h1>輸入驗證碼</h1>
+          <p id="phonePreview" class="flow-copy"></p>
+          <p class="test-code-note">測試期間請輸入 <strong>123456</strong></p>
+          <form id="codeForm" novalidate>
+            <label class="field-label" for="loginCode">6 碼驗證碼</label>
+            <input class="flow-input code-input" id="loginCode" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required>
+            <p id="codeError" class="form-error" role="alert"></p>
+            <button class="button button-primary button-block" type="submit">驗證並登入</button>
+            <button class="button button-plain button-block" type="button" data-action="back-phone">更換手機號碼</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="onboardingView" class="view flow-view" hidden>
+    <main class="flow-shell">
+      <div class="step-indicator" aria-label="設定進度"><span id="stepDot1" class="active">1</span><i></i><span id="stepDot2">2</span><i></i><span id="stepDot3">3</span></div>
+      <section class="flow-card">
+        <div class="onboarding-step" data-step="1">
+          <p class="flow-eyebrow">第 1 步，共 3 步</p><h1>建立農場</h1><p class="flow-copy">先幫你的農場取個容易辨識的名稱。</p>
+          <form id="farmForm" novalidate><label class="field-label" for="farmName">農場名稱</label><input class="flow-input" id="farmName" name="farmName" maxlength="30" placeholder="例如：水尾蝦場" required><p id="farmError" class="form-error" role="alert"></p><button class="button button-primary button-block" type="submit">下一步</button><button class="button button-plain button-block skip-button" type="button" data-action="skip-onboarding">略過，直接進入首頁</button></form>
+        </div>
+        <div class="onboarding-step" data-step="2" hidden>
+          <p class="flow-eyebrow">第 2 步，共 3 步</p><h1>建立區域</h1><p class="flow-copy">可以依位置或用途建立多個區域。</p>
+          <form id="zoneForm" class="inline-add-form" novalidate><label class="field-label" for="zoneName">區域名稱</label><div><input class="flow-input" id="zoneName" name="zoneName" maxlength="30" placeholder="例如：水尾區" required><button class="button button-secondary" type="submit">新增</button></div><p id="zoneError" class="form-error" role="alert"></p></form>
+          <div id="onboardingZoneList" class="setup-list"></div>
+          <div class="flow-actions"><button class="button button-plain" type="button" data-action="onboarding-back">上一步</button><button class="button button-primary" type="button" data-action="zones-next">下一步</button></div>
+        </div>
+        <div class="onboarding-step" data-step="3" hidden>
+          <p class="flow-eyebrow">第 3 步，共 3 步</p><h1>建立池子</h1><p class="flow-copy">選擇區域後，可以連續加入多個池子。</p>
+          <form id="pondSetupForm" novalidate><label class="field-label" for="pondZone">所屬區域</label><select class="flow-input" id="pondZone" name="zoneId" required></select><label class="field-label" for="setupPondName">池子名稱</label><div class="inline-fields"><input class="flow-input" id="setupPondName" name="pondName" maxlength="30" placeholder="例如：水尾1池" required><button class="button button-secondary" type="submit">新增</button></div><p id="pondSetupError" class="form-error" role="alert"></p></form>
+          <div id="onboardingPondList" class="setup-list"></div>
+          <div class="flow-actions"><button class="button button-plain" type="button" data-action="onboarding-back">上一步</button><button class="button button-primary" type="button" data-action="finish-onboarding">完成設定</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
   <div id="homeView" class="view home-view">
     <header class="home-header">
       <img class="header-logo" src="assets/images/&#26032;&#30340;LOGO1150716.png" alt="&#24555;&#27138;&#34662;&#36786;">
@@ -30,12 +86,22 @@
     </main>
 
     <nav class="bottom-nav" aria-label="&#20027;&#35201;&#23566;&#35261;">
-      <button class="nav-item active" type="button"><span>&#8962;</span><strong>&#39318;&#38913;</strong></button>
+      <button class="nav-item active" type="button" data-home><span>&#8962;</span><strong>&#39318;&#38913;</strong></button>
       <button class="nav-item" type="button" data-feature="journal"><span>&#128221;</span><strong>&#26085;&#35468;</strong></button>
       <button class="nav-item nav-ai" type="button" data-feature="ai"><span>AI</span><strong>AI &#21161;&#29702;</strong></button>
       <button class="nav-item" type="button" data-feature="notification"><span>&#128276;</span><strong>&#36890;&#30693;</strong></button>
       <button class="nav-item" type="button" data-feature="profile"><span>&#9786;</span><strong>&#25105;&#30340;</strong></button>
     </nav>
+  </div>
+
+  <div id="settingsView" class="view settings-view" hidden>
+    <header class="settings-header"><button class="back-button" type="button" data-home aria-label="返回首頁">&#8249;</button><div><p class="eyebrow">帳號與農場</p><h1>設定</h1></div></header>
+    <main class="settings-main">
+      <section class="settings-card"><h2>登入帳號</h2><p class="settings-phone">手機號碼：<strong id="settingsPhone"></strong></p><button id="logoutButton" class="button button-danger" type="button">登出</button></section>
+      <section class="settings-card"><h2>農場名稱</h2><form id="settingsFarmForm" novalidate><label class="field-label" for="settingsFarmName">名稱</label><input class="flow-input" id="settingsFarmName" name="farmName" maxlength="30" required><p id="settingsFarmError" class="form-error" role="alert"></p><button class="button button-primary" type="submit">儲存名稱</button></form></section>
+      <section class="settings-card"><h2>區域管理</h2><form id="settingsZoneForm" class="inline-add-form" novalidate><label class="field-label" for="settingsZoneName">新增區域</label><div><input class="flow-input" id="settingsZoneName" maxlength="30" placeholder="區域名稱"><button class="button button-secondary" type="submit">新增</button></div><p id="settingsZoneError" class="form-error" role="alert"></p></form><div id="settingsZoneList" class="manage-list"></div></section>
+      <section class="settings-card"><h2>池子管理</h2><form id="settingsPondForm" novalidate><label class="field-label" for="settingsPondZone">所屬區域</label><select class="flow-input" id="settingsPondZone" required></select><label class="field-label" for="settingsPondName">新增池子</label><div class="inline-fields"><input class="flow-input" id="settingsPondName" maxlength="30" placeholder="池子名稱"><button class="button button-secondary" type="submit">新增</button></div><p id="settingsPondError" class="form-error" role="alert"></p></form><div id="settingsPondList" class="manage-list"></div></section>
+    </main>
   </div>
 
   <div id="patrolView" class="view patrol-view" hidden>
