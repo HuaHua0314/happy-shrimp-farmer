@@ -20,8 +20,10 @@ button { cursor: pointer; }
 .home-view { overflow-x: clip; }
 .home-header, .home-main, .topbar, .patrol-view main { width: min(820px, calc(100% - 32px)); margin-inline: auto; }
 .home-main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
-.home-header { display: flex; justify-content: center; padding: max(18px, env(safe-area-inset-top)) 0 14px; }
+.home-header { display: flex; align-items: center; flex-direction: column; justify-content: center; padding: max(18px, env(safe-area-inset-top)) 0 14px; }
 .header-logo { display: block; width: min(200px, 54vw); height: auto; object-fit: contain; }
+.home-day { margin: 4px 0 0; color: var(--muted); font-size: .92rem; font-weight: 700; }
+.home-day strong { color: var(--red-dark); }
 h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.02em; }
 .primary-actions { margin-top: 0; }
 .feature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -36,7 +38,14 @@ h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.02em; }
 .feature-card:nth-child(5) .feature-icon { background: #fff7da; }
 .feature-card:nth-child(6) .feature-icon { background: #fff0e6; }
 .feature-card:nth-child(7) .feature-icon { background: #e7f6f7; }
+.home-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+.home-info-card { display: flex; align-items: center; gap: 12px; min-height: 92px; border: 1px solid var(--line); border-radius: 22px; padding: 16px; background: white; box-shadow: 0 8px 22px rgba(0,0,0,.04); }
+.home-info-card > span { font-size: 1.6rem; }
+.home-info-card h2 { margin: 0 0 4px; font-size: 1rem; }
+.home-info-card p { margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.35; }
+.reminder-card { grid-column: 1 / -1; }
 .bottom-nav { position: fixed; z-index: 20; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(5, 1fr); padding: 7px max(10px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); border-top: 1px solid var(--line); background: rgba(255,255,255,.96); backdrop-filter: blur(22px); }
+.home-bottom-nav { grid-template-columns: repeat(4, 1fr); }
 .nav-item { display: flex; align-items: center; flex-direction: column; gap: 3px; min-height: 54px; border: 0; background: transparent; color: #938b84; }
 .nav-item span { font-size: 1.25rem; line-height: 1.2; }
 .nav-item strong { font-size: .68rem; }

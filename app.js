@@ -82,6 +82,15 @@ function createId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.
 function cleanName(value) { return String(value || "").trim().replace(/\s+/g, " "); }
 function sameName(a, b) { return cleanName(a).toLocaleLowerCase("zh-Hant") === cleanName(b).toLocaleLowerCase("zh-Hant"); }
 
+function dayNumber() {
+  const first = new Date(`${state.firstUseDate || todayKey}T00:00:00`);
+  const today = new Date(`${todayKey}T00:00:00`);
+  if (Number.isNaN(first.getTime())) return 1;
+  return Math.max(1, Math.round((today - first) / 86400000) + 1);
+}
+
+function updateHomeView() { document.querySelector("#homeDay").textContent = dayNumber(); }
+
 function syncFarmPondsToPatrol() {
   state.ponds ||= [];
   farmData.ponds.forEach((farmPond) => {
@@ -119,6 +128,7 @@ function routeApp() {
   }
   syncFarmPondsToPatrol();
   homeView.hidden = false;
+  updateHomeView();
   render();
 }
 
@@ -255,7 +265,7 @@ function render() {
   emptyState.hidden = total > 0;
 }
 
-function showHome() { hideAppViews(); homeView.hidden = false; render(); window.scrollTo(0, 0); }
+function showHome() { hideAppViews(); homeView.hidden = false; updateHomeView(); render(); window.scrollTo(0, 0); }
 function showPatrol() { hideAppViews(); patrolView.hidden = false; render(); window.scrollTo(0, 0); }
 function showDevelopment() { developmentDialog.showModal(); }
 

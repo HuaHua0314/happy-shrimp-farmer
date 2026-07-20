@@ -68,29 +68,34 @@
   <div id="homeView" class="view home-view">
     <header class="home-header">
       <img class="header-logo" src="assets/images/&#26032;&#30340;LOGO1150716.png" alt="&#24555;&#27138;&#34662;&#36786;">
+      <p class="home-day">陪伴你養蝦 <strong>Day <span id="homeDay">1</span></strong></p>
     </header>
 
     <main class="home-main">
       <section class="primary-actions" aria-label="&#21151;&#33021;&#20837;&#21475;">
         <div class="feature-grid">
-          <button class="feature-card" type="button" data-feature="patrol"><span class="feature-icon" aria-hidden="true">&#128031;</span><span>&#24033;&#27744;</span><small class="feature-description">&#32000;&#37636;&#27599;&#27744;&#29376;&#27841;</small></button>
-          <button class="feature-card" type="button" data-feature="feeding"><span class="feature-icon" aria-hidden="true">&#127806;</span><span>&#39221;&#39164;&#26009;</span><small class="feature-description">&#24555;&#36895;&#32000;&#37636;&#39221;&#26009;</small></button>
-          <button class="feature-card" type="button" data-feature="additives"><span class="feature-icon" aria-hidden="true">&#129514;</span><span>&#21152;&#26009;</span><small class="feature-description">&#32933;&#26009;&#12289;&#34277;&#21697;&#12289;&#33740;&#31278;</small></button>
-          <button class="feature-card" type="button" data-feature="harvest"><span class="feature-icon" aria-hidden="true">&#129424;</span><span>&#25910;&#25104;</span><small class="feature-description">&#32000;&#37636;&#25235;&#34662;&#33287;&#25910;&#20837;</small></button>
-          <button class="feature-card" type="button" data-feature="inventory"><span class="feature-icon" aria-hidden="true">&#128230;</span><span>&#24235;&#23384;</span><small class="feature-description">&#26597;&#30475;&#39164;&#26009;&#33287;&#29289;&#26009;</small></button>
-          <button class="feature-card" type="button" data-feature="reports"><span class="feature-icon" aria-hidden="true">&#128202;</span><span>&#22577;&#34920;</span><small class="feature-description">&#26597;&#30475;&#25209;&#27425;&#25910;&#25903;</small></button>
-          <button class="feature-card" type="button" data-feature="turtle"><span class="feature-icon" aria-hidden="true">&#128034;</span><span>&#27700;&#40860;</span><small class="feature-description">&#25552;&#37266;&#33287;&#24453;&#36774;&#20107;&#38917;</small></button>
-          <button class="feature-card" type="button" data-feature="settings"><span class="feature-icon" aria-hidden="true">&#9881;&#65039;</span><span>&#35373;&#23450;</span><small class="feature-description">&#36786;&#22580;&#33287;&#24115;&#34399;&#31649;&#29702;</small></button>
+          <button class="feature-card" type="button" data-feature="patrol"><span class="feature-icon" aria-hidden="true">&#128031;</span><span>巡蝦</span><small class="feature-description">看看今天蝦子的狀況</small></button>
+          <button class="feature-card" type="button" data-feature="feeding"><span class="feature-icon" aria-hidden="true">&#127806;</span><span>餵蝦</span><small class="feature-description">記錄今天餵了多少</small></button>
+          <button class="feature-card" type="button" data-feature="additives"><span class="feature-icon" aria-hidden="true">&#129514;</span><span>下肥</span><small class="feature-description">記錄今天用了哪些肥料</small></button>
+          <button class="feature-card" type="button" data-feature="harvest"><span class="feature-icon" aria-hidden="true">&#129424;</span><span>抓蝦</span><small class="feature-description">記錄抓蝦與收入</small></button>
+          <button class="feature-card" type="button" data-feature="inventory"><span class="feature-icon" aria-hidden="true">&#128230;</span><span>庫存</span><small class="feature-description">查看剩餘物料</small></button>
+          <button class="feature-card" type="button" data-feature="reports"><span class="feature-icon" aria-hidden="true">&#128202;</span><span>報表</span><small class="feature-description">收支與養殖分析</small></button>
+          <button class="feature-card" type="button" data-feature="turtle"><span class="feature-icon" aria-hidden="true">&#128034;</span><span>水龜</span><small class="feature-description">烤池計時幫手</small></button>
+          <button class="feature-card" type="button" data-feature="settings"><span class="feature-icon" aria-hidden="true">&#9881;&#65039;</span><span>設定</span><small class="feature-description">管理農場與池子</small></button>
         </div>
+      </section>
+      <section class="home-info-grid" aria-label="今日資訊">
+        <article class="home-info-card"><span aria-hidden="true">&#9729;&#65039;</span><div><h2>今日天氣</h2><p>尚未提供天氣資料</p></div></article>
+        <article class="home-info-card"><span aria-hidden="true">&#129517;</span><div><h2>今日風向</h2><p>尚未提供風向資料</p></div></article>
+        <article class="home-info-card reminder-card"><span aria-hidden="true">&#128276;</span><div><h2>提醒事項</h2><p>目前沒有提醒事項</p></div></article>
       </section>
     </main>
 
-    <nav class="bottom-nav" aria-label="&#20027;&#35201;&#23566;&#35261;">
+    <nav class="bottom-nav home-bottom-nav" aria-label="&#20027;&#35201;&#23566;&#35261;">
       <button class="nav-item active" type="button" data-home><span>&#8962;</span><strong>&#39318;&#38913;</strong></button>
-      <button class="nav-item" type="button" data-feature="journal"><span>&#128221;</span><strong>&#26085;&#35468;</strong></button>
-      <button class="nav-item nav-ai" type="button" data-feature="ai"><span>AI</span><strong>AI &#21161;&#29702;</strong></button>
+      <button class="nav-item" type="button" data-feature="reminders"><span>&#128221;</span><strong>提醒</strong></button>
       <button class="nav-item" type="button" data-feature="notification"><span>&#128276;</span><strong>&#36890;&#30693;</strong></button>
-      <button class="nav-item" type="button" data-feature="profile"><span>&#9786;</span><strong>&#25105;&#30340;</strong></button>
+      <button class="nav-item" type="button" data-feature="settings"><span>&#9881;&#65039;</span><strong>設定</strong></button>
     </nav>
   </div>
 
