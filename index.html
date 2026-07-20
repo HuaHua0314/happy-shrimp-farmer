@@ -121,10 +121,20 @@
   </div>
 
   <div id="feedingRecordView" class="view settings-view" hidden>
-    <header class="settings-header"><button class="back-button" type="button" data-action="back-feeding-ponds" aria-label="返回池子列表">&#8249;</button><div><p class="eyebrow">餵蝦紀錄</p><h1 id="feedingPondTitle">池子</h1></div></header>
+    <header class="settings-header"><button class="back-button" type="button" data-action="back-feeding-ponds" aria-label="返回池子列表">&#8249;</button><div><p class="eyebrow">餵蝦紀錄</p><h1>餵蝦</h1></div></header>
     <main class="settings-main feeding-record-main">
       <section class="settings-card feeding-record-card">
+        <p class="feeding-pond-label">池名：<strong id="feedingPondTitle">池子</strong></p>
         <div class="record-meta"><span>日期：<strong id="feedingDate"></strong></span><span>時間：<strong id="feedingTime"></strong></span></div>
+        <section class="previous-feeding" aria-labelledby="previousFeedingHeading">
+          <h2 id="previousFeedingHeading">上一餐紀錄</h2>
+          <p id="previousFeedingEmpty">尚無上一餐紀錄</p>
+          <div id="previousFeedingDetails" class="previous-feeding-details" hidden>
+            <p><strong id="previousFeedingDate"></strong> <span id="previousFeedingTime"></span></p>
+            <p><strong id="previousFeedingKilograms"></strong></p>
+            <p id="previousFeedingStatus"></p>
+          </div>
+        </section>
         <form id="feedingRecordForm" novalidate>
           <fieldset class="compact-fieldset"><legend>前一餐是否吃完？</legend><label class="choice"><input type="radio" name="previousMeal" value="finished" required><span>吃完</span></label><label class="choice"><input type="radio" name="previousMeal" value="unfinished"><span>沒吃完</span></label></fieldset>
           <div class="form-section"><h2>本餐餵料</h2><label class="field-label" for="feedBrand">品牌</label><select class="flow-input" id="feedBrand" name="brand" required><option value="">請選擇品牌</option><option value="統一">統一</option><option value="福壽">福壽</option><option value="卜蜂">卜蜂</option><option value="其他">其他</option></select><label class="field-label" for="feedNumber">號數</label><select class="flow-input" id="feedNumber" name="feedNumber" required><option value="">請選擇號數</option><option value="0號">0號</option><option value="1號">1號</option><option value="2號">2號</option><option value="3號">3號</option><option value="4號">4號</option><option value="其他">其他</option></select><label class="field-label" for="feedKilograms">公斤</label><input class="flow-input" id="feedKilograms" name="kilograms" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="例如：12.5"><p class="field-hint">選擇「沒吃完」時，公斤數可以留空。</p></div>

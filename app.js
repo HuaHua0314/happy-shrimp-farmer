@@ -344,13 +344,45 @@ function feedingCompletedToday(pondId) {
 
 function feedingPondItem(pond) {
   const completed = feedingCompletedToday(pond.id);
-  const item = document.createElement("div");
+  const item = document.createElement("button");
   item.className = `feeding-pond-item${completed ? " completed" : ""}`;
+  item.type = "button";
   item.setAttribute("role", "listitem");
   item.setAttribute("aria-label", `${pond.name}，今天${completed ? "已完成" : "尚未完成"}餵蝦`);
   item.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong>`;
   item.querySelector("strong").textContent = pond.name;
+  item.addEventListener("click", () => showFeedingRecord(pond.id));
   return item;
+}
+
+function feedingRecordTimestamp(record) {
+  const fallback = `${record.date || ""}T${record.time || "00:00"}`;
+  const value = Date.parse(record.updatedAt || fallback);
+  return Number.isNaN(value) ? 0 : value;
+}
+
+function feedingDateLabel(dateKey) {
+  const date = new Date(`${dateKey}T00:00:00`);
+  const today = new Date(`${todayKey}T00:00:00`);
+  const days = Math.round((today - date) / 86400000);
+  if (days === 0) return "今天";
+  if (days === 1) return "昨天";
+  return new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric" }).format(date);
+}
+
+function renderPreviousFeedingRecord(pondId, currentRecord) {
+  const previous = feedingData.records
+    .filter((record) => record.pondId === pondId && record.id !== currentRecord?.id)
+    .sort((a, b) => feedingRecordTimestamp(b) - feedingRecordTimestamp(a))[0];
+  const empty = document.querySelector("#previousFeedingEmpty");
+  const details = document.querySelector("#previousFeedingDetails");
+  empty.hidden = Boolean(previous);
+  details.hidden = !previous;
+  if (!previous) return;
+  document.querySelector("#previousFeedingDate").textContent = feedingDateLabel(previous.date);
+  document.querySelector("#previousFeedingTime").textContent = previous.time || "";
+  document.querySelector("#previousFeedingKilograms").textContent = previous.kilograms == null ? "未填公斤數" : `${previous.kilograms} 公斤`;
+  document.querySelector("#previousFeedingStatus").textContent = previous.previousMeal === "finished" ? "✅ 吃完" : "○ 沒吃完";
 }
 
 function showFeedingRecord(pondId) {
@@ -365,6 +397,7 @@ function showFeedingRecord(pondId) {
   feedingRecordForm.reset();
   document.querySelector("#feedingRecordError").textContent = "";
   const existing = feedingData.records.find((record) => record.pondId === pondId && record.date === todayKey);
+  renderPreviousFeedingRecord(pondId, existing);
   if (existing) {
     feedingRecordForm.elements.previousMeal.value = existing.previousMeal;
     feedingRecordForm.elements.brand.value = existing.brand;

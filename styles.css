@@ -162,6 +162,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .feeding-main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 .feeding-pond-list { display: grid; gap: 9px; }
 .feeding-pond-item { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 68px; border: 1px solid var(--line); border-radius: 18px; padding: 8px 15px; background: white; box-shadow: 0 6px 18px rgba(0,0,0,.035); color: var(--ink); text-align: left; }
+.feeding-pond-item:active { background: #f8f8f9; transform: scale(.985); }
 .feeding-status-icon { color: #a5a5aa; font-size: 1.55rem; font-weight: 900; text-align: center; }
 .feeding-pond-item.completed .feeding-status-icon { color: #2f946e; }
 .feeding-pond-item strong { overflow: hidden; font-size: 1.2rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -170,8 +171,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .feeding-progress-bar p { margin: 0; color: #247a5a; font-size: 1rem; font-weight: 850; }
 .feeding-record-main { width: min(560px, calc(100% - 32px)); }
 .feeding-record-card { padding: 21px; }
+.feeding-pond-label { margin: 0 0 12px; color: var(--muted); font-size: .95rem; }
+.feeding-pond-label strong { display: block; margin-top: 3px; color: var(--ink); font-size: 1.35rem; }
 .record-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 18px; margin-bottom: 22px; border-radius: 14px; padding: 12px 14px; background: #f7f7f8; color: var(--muted); font-size: .9rem; }
 .record-meta strong { color: var(--ink); }
+.previous-feeding { margin-bottom: 22px; border-radius: 17px; padding: 16px; background: #fff8f1; }
+.previous-feeding h2 { margin: 0 0 10px; font-size: 1.05rem; }
+.previous-feeding > p { margin: 0; color: var(--muted); }
+.previous-feeding-details { display: grid; gap: 5px; }
+.previous-feeding-details p { margin: 0; font-size: .96rem; }
+.previous-feeding-details p:last-child { margin-top: 3px; font-weight: 800; }
 .compact-fieldset { margin-bottom: 23px; }
 .compact-fieldset .choice span { padding-block: 12px; }
 .form-section { margin-bottom: 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 0 6px; }
