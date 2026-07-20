@@ -349,8 +349,16 @@ function feedingPondItem(pond) {
   item.type = "button";
   item.setAttribute("role", "listitem");
   item.setAttribute("aria-label", `${pond.name}，今天${completed ? "已完成" : "尚未完成"}餵蝦`);
-  item.innerHTML = `<strong></strong><small>${completed ? "✓ 已完成" : "未完成"}</small>`;
-  item.querySelector("strong").textContent = pond.name;
+  const name = document.createElement("strong");
+  if (completed) {
+    const check = document.createElement("span");
+    check.className = "feeding-completed-check";
+    check.textContent = "✓";
+    name.append(check, ` ${pond.name}`);
+  } else {
+    name.textContent = pond.name;
+  }
+  item.append(name);
   item.addEventListener("click", () => showFeedingRecord(pond.id));
   return item;
 }
