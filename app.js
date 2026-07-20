@@ -1,6 +1,7 @@
 const STORAGE_KEY = "happyShrimpFarmer.v1";
 const ACCOUNT_KEY = "happyShrimpFarmer.account.v1";
 const FARM_KEY = "happyShrimpFarmer.farm.v1";
+const FEEDING_KEY = "happyShrimpFarmer.feeding.v1";
 const TEST_CODE = "123456";
 const DEFAULT_PONDS = ["一號池", "二號池", "育苗池"];
 
@@ -18,6 +19,8 @@ const todayKey = localDateKey(new Date());
 let state = loadPatrolState();
 let account = loadJson(ACCOUNT_KEY, { phone: "", isLoggedIn: false });
 let farmData = normalizeFarmData(loadJson(FARM_KEY, null));
+let feedingData = loadJson(FEEDING_KEY, { records: [] });
+if (!Array.isArray(feedingData.records)) feedingData = { records: [] };
 let editingId = null;
 let pendingPhone = "";
 let onboardingStep = 1;
@@ -26,6 +29,8 @@ let draggedZoneElement = null;
 let currentPondZoneId = null;
 let editingFarmPondId = null;
 let draggedPondElement = null;
+let currentFeedingZoneId = null;
+let currentFeedingPondId = null;
 
 const authView = document.querySelector("#authView");
 const onboardingView = document.querySelector("#onboardingView");
@@ -35,6 +40,9 @@ const settingsView = document.querySelector("#settingsView");
 const zoneManagementView = document.querySelector("#zoneManagementView");
 const pondManagementView = document.querySelector("#pondManagementView");
 const pondZoneDetailView = document.querySelector("#pondZoneDetailView");
+const feedingZoneView = document.querySelector("#feedingZoneView");
+const feedingPondView = document.querySelector("#feedingPondView");
+const feedingRecordView = document.querySelector("#feedingRecordView");
 const pondList = document.querySelector("#pondList");
 const emptyState = document.querySelector("#emptyState");
 const gridSelect = document.querySelector("#gridColumns");
@@ -48,6 +56,7 @@ const zoneEditorForm = document.querySelector("#zoneEditorForm");
 const farmEditorDialog = document.querySelector("#farmEditorDialog");
 const pondEditorDialog = document.querySelector("#pondEditorDialog");
 const pondEditorForm = document.querySelector("#pondEditorForm");
+const feedingRecordForm = document.querySelector("#feedingRecordForm");
 
 function localDateKey(date) {
   const year = date.getFullYear();
@@ -94,6 +103,7 @@ function normalizeFarmData(saved) {
 function savePatrolState() { saveJson(STORAGE_KEY, state); }
 function saveAccount() { saveJson(ACCOUNT_KEY, account); }
 function saveFarmData() { saveJson(FARM_KEY, farmData); }
+function saveFeedingData() { saveJson(FEEDING_KEY, feedingData); }
 function createId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`; }
 function cleanName(value) { return String(value || "").trim().replace(/\s+/g, " "); }
 function sameName(a, b) { return cleanName(a).toLocaleLowerCase("zh-Hant") === cleanName(b).toLocaleLowerCase("zh-Hant"); }
@@ -127,7 +137,7 @@ function syncFarmPondsToPatrol() {
 }
 
 function hideAppViews() {
-  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView].forEach((view) => { view.hidden = true; });
+  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView, feedingZoneView, feedingPondView, feedingRecordView].forEach((view) => { view.hidden = true; });
 }
 
 function routeApp() {
@@ -285,6 +295,78 @@ function render() {
 function showHome() { hideAppViews(); homeView.hidden = false; updateHomeView(); render(); window.scrollTo(0, 0); }
 function showPatrol() { hideAppViews(); patrolView.hidden = false; render(); window.scrollTo(0, 0); }
 function showDevelopment() { developmentDialog.showModal(); }
+
+function showFeedingZones() {
+  hideAppViews();
+  feedingZoneView.hidden = false;
+  const list = document.querySelector("#feedingZoneList");
+  const zones = [...farmData.zones].sort((a, b) => a.order - b.order);
+  list.replaceChildren(...zones.map((zone) => feedingZoneItem(zone)));
+  document.querySelector("#feedingZoneEmptyState").hidden = zones.length > 0;
+  window.scrollTo(0, 0);
+}
+
+function feedingZoneItem(zone) {
+  const button = document.createElement("button");
+  button.className = "settings-menu-item";
+  button.type = "button";
+  const pondCount = farmData.ponds.filter((pond) => pond.zoneId === zone.id).length;
+  button.innerHTML = `<span><strong></strong><small>${pondCount} 個池子</small></span><b aria-hidden="true">›</b>`;
+  button.querySelector("strong").textContent = zone.name;
+  button.addEventListener("click", () => showFeedingPonds(zone.id));
+  return button;
+}
+
+function showFeedingPonds(zoneId) {
+  const zone = farmData.zones.find((item) => item.id === zoneId);
+  if (!zone) { showFeedingZones(); return; }
+  currentFeedingZoneId = zoneId;
+  hideAppViews();
+  feedingPondView.hidden = false;
+  document.querySelector("#feedingZoneTitle").textContent = zone.name;
+  renderFeedingPonds();
+  window.scrollTo(0, 0);
+}
+
+function renderFeedingPonds() {
+  const ponds = farmData.ponds.filter((pond) => pond.zoneId === currentFeedingZoneId).sort((a, b) => a.order - b.order);
+  const list = document.querySelector("#feedingPondList");
+  list.replaceChildren(...ponds.map((pond) => feedingPondItem(pond)));
+  document.querySelector("#feedingPondEmptyState").hidden = ponds.length > 0;
+}
+
+function feedingPondItem(pond) {
+  const completed = feedingData.records.some((record) => record.pondId === pond.id && record.date === todayKey);
+  const button = document.createElement("button");
+  button.className = `feeding-pond-item${completed ? " completed" : ""}`;
+  button.type = "button";
+  button.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong><small>${completed ? "已完成" : "未完成"}</small>`;
+  button.querySelector("strong").textContent = pond.name;
+  button.addEventListener("click", () => showFeedingRecord(pond.id));
+  return button;
+}
+
+function showFeedingRecord(pondId) {
+  const pond = farmData.ponds.find((item) => item.id === pondId && item.zoneId === currentFeedingZoneId);
+  if (!pond) { showFeedingPonds(currentFeedingZoneId); return; }
+  currentFeedingPondId = pondId;
+  hideAppViews();
+  feedingRecordView.hidden = false;
+  document.querySelector("#feedingPondTitle").textContent = pond.name;
+  document.querySelector("#feedingDate").textContent = new Intl.DateTimeFormat("zh-TW", { month: "long", day: "numeric" }).format(new Date());
+  document.querySelector("#feedingTime").textContent = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+  feedingRecordForm.reset();
+  document.querySelector("#feedingRecordError").textContent = "";
+  const existing = feedingData.records.find((record) => record.pondId === pondId && record.date === todayKey);
+  if (existing) {
+    feedingRecordForm.elements.previousMeal.value = existing.previousMeal;
+    feedingRecordForm.elements.brand.value = existing.brand;
+    feedingRecordForm.elements.feedNumber.value = existing.feedNumber;
+    feedingRecordForm.elements.kilograms.value = existing.kilograms ?? "";
+    feedingRecordForm.elements.notes.value = existing.notes || "";
+  }
+  window.scrollTo(0, 0);
+}
 
 function showSettings() {
   hideAppViews();
@@ -535,6 +617,42 @@ pondEditorForm.addEventListener("submit", (event) => {
   renderZonePonds();
 });
 
+feedingRecordForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const data = new FormData(event.currentTarget);
+  const previousMeal = data.get("previousMeal");
+  const brand = data.get("brand");
+  const feedNumber = data.get("feedNumber");
+  const kilogramsText = String(data.get("kilograms") || "").trim();
+  const error = document.querySelector("#feedingRecordError");
+  if (!previousMeal) { error.textContent = "請選擇前一餐是否吃完。"; return; }
+  if (!brand) { error.textContent = "請選擇飼料品牌。"; return; }
+  if (!feedNumber) { error.textContent = "請選擇飼料號數。"; return; }
+  if (previousMeal === "finished" && !kilogramsText) { error.textContent = "前一餐吃完時，請輸入本餐公斤數。"; return; }
+  if (kilogramsText && (!Number.isFinite(Number(kilogramsText)) || Number(kilogramsText) <= 0)) { error.textContent = "公斤數請輸入大於 0 的數字。"; return; }
+  const now = new Date();
+  const existingIndex = feedingData.records.findIndex((record) => record.pondId === currentFeedingPondId && record.date === todayKey);
+  const existing = existingIndex >= 0 ? feedingData.records[existingIndex] : null;
+  const record = {
+    id: existing?.id || createId("feeding"),
+    pondId: currentFeedingPondId,
+    zoneId: currentFeedingZoneId,
+    date: todayKey,
+    time: new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now),
+    previousMeal,
+    brand,
+    feedNumber,
+    kilograms: kilogramsText ? Number(kilogramsText) : null,
+    notes: cleanName(data.get("notes")),
+    updatedAt: now.toISOString()
+  };
+  if (existingIndex >= 0) feedingData.records[existingIndex] = record;
+  else feedingData.records.push(record);
+  error.textContent = "";
+  saveFeedingData();
+  showFeedingPonds(currentFeedingZoneId);
+});
+
 zoneEditorForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const name = cleanName(event.currentTarget.elements.zoneName.value);
@@ -667,6 +785,7 @@ zonePondList.addEventListener("pointercancel", () => {
 document.querySelectorAll("[data-feature]").forEach((button) => button.addEventListener("click", () => {
   const feature = button.dataset.feature;
   if (feature === "patrol") showPatrol();
+  else if (feature === "feeding") showFeedingZones();
   else if (feature === "settings" || feature === "profile") showSettings();
   else showDevelopment();
 }));
@@ -717,6 +836,8 @@ document.addEventListener("click", (event) => {
   if (!action) return;
   if (action === "back-phone") showPhoneStep();
   if (action === "open-full-settings") showSettings();
+  if (action === "open-feeding-zones") showFeedingZones();
+  if (action === "back-feeding-ponds") showFeedingPonds(currentFeedingZoneId);
   if (action === "open-farm-editor") {
     document.querySelector("#settingsFarmName").value = farmData.farm?.name || "";
     document.querySelector("#settingsFarmError").textContent = "";
