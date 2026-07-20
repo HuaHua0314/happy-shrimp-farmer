@@ -349,7 +349,7 @@ function feedingPondItem(pond) {
   item.type = "button";
   item.setAttribute("role", "listitem");
   item.setAttribute("aria-label", `${pond.name}，今天${completed ? "已完成" : "尚未完成"}餵蝦`);
-  item.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong><small>${completed ? "已完成" : "未完成"}</small>`;
+  item.innerHTML = `<strong></strong><small>${completed ? "✓ 已完成" : "未完成"}</small>`;
   item.querySelector("strong").textContent = pond.name;
   item.addEventListener("click", () => showFeedingRecord(pond.id));
   return item;
