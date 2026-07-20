@@ -162,7 +162,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .feeding-main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 .feeding-pond-list { display: grid; gap: 9px; }
 .feeding-pond-item { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 68px; border: 1px solid var(--line); border-radius: 18px; padding: 8px 15px; background: white; box-shadow: 0 6px 18px rgba(0,0,0,.035); color: var(--ink); text-align: left; }
-.feeding-pond-item:active { background: #f8f8f9; transform: scale(.985); }
 .feeding-status-icon { color: #a5a5aa; font-size: 1.55rem; font-weight: 900; text-align: center; }
 .feeding-pond-item.completed .feeding-status-icon { color: #2f946e; }
 .feeding-pond-item strong { overflow: hidden; font-size: 1.2rem; text-overflow: ellipsis; white-space: nowrap; }

@@ -344,14 +344,13 @@ function feedingCompletedToday(pondId) {
 
 function feedingPondItem(pond) {
   const completed = feedingCompletedToday(pond.id);
-  const button = document.createElement("button");
-  button.className = `feeding-pond-item${completed ? " completed" : ""}`;
-  button.type = "button";
-  button.setAttribute("aria-label", `${pond.name}，今天${completed ? "已完成" : "尚未完成"}餵蝦`);
-  button.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong>`;
-  button.querySelector("strong").textContent = pond.name;
-  button.addEventListener("click", () => showFeedingRecord(pond.id));
-  return button;
+  const item = document.createElement("div");
+  item.className = `feeding-pond-item${completed ? " completed" : ""}`;
+  item.setAttribute("role", "listitem");
+  item.setAttribute("aria-label", `${pond.name}，今天${completed ? "已完成" : "尚未完成"}餵蝦`);
+  item.innerHTML = `<span class="feeding-status-icon" aria-hidden="true">${completed ? "✓" : "○"}</span><strong></strong>`;
+  item.querySelector("strong").textContent = pond.name;
+  return item;
 }
 
 function showFeedingRecord(pondId) {
