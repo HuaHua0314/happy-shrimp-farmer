@@ -132,6 +132,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .manage-item .flow-input { margin: 0; }
 .pond-manage-item { grid-template-columns: minmax(0, 1fr) 108px auto; }
 .manage-item .button { min-height: 44px; padding-inline: 13px; }
+.zone-management-view { min-height: 100vh; padding-bottom: calc(110px + env(safe-area-inset-bottom)); background: #fafafa; }
+.zone-header { justify-content: flex-start; }
+.zone-more-settings { margin-left: auto; }
+.zone-management-main { width: min(620px, calc(100% - 32px)); margin-inline: auto; }
+.zone-help { margin: 0 0 14px; color: var(--muted); font-size: .92rem; line-height: 1.5; }
+.zone-sort-list { display: grid; gap: 10px; }
+.zone-sort-item { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 70px; border: 1px solid var(--line); border-radius: 20px; padding: 9px 13px 9px 8px; background: white; box-shadow: 0 7px 20px rgba(0,0,0,.04); transition: transform .15s, opacity .15s; }
+.zone-sort-item.dragging { z-index: 2; opacity: .65; transform: scale(1.015); }
+.zone-drag-handle { display: grid; place-items: center; width: 44px; height: 48px; border: 0; background: transparent; color: #9a9a9f; font-size: 1.35rem; cursor: grab; touch-action: none; }
+.zone-drag-handle:active { cursor: grabbing; }
+.zone-name-button { min-height: 48px; border: 0; padding: 8px 4px; background: transparent; color: var(--ink); font-size: 1.12rem; font-weight: 800; text-align: left; }
+.zone-order { color: var(--muted); font-size: .8rem; font-weight: 700; }
+.zone-fab { position: fixed; z-index: 15; right: max(22px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom)); display: grid; place-items: center; width: 62px; height: 62px; border: 0; border-radius: 50%; background: var(--red); color: white; box-shadow: 0 12px 30px rgba(232,72,67,.32); font-size: 2rem; line-height: 1; }
 @media (max-width: 600px) {
   .topbar { grid-template-columns: auto 1fr; } .topbar > .button { grid-column: 1 / -1; width: 100%; }
   .pond-card { grid-template-columns: auto 1fr; } .pond-actions { grid-column: 1 / -1; } .record-button { flex: 1; }

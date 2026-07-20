@@ -21,12 +21,15 @@ let farmData = normalizeFarmData(loadJson(FARM_KEY, null));
 let editingId = null;
 let pendingPhone = "";
 let onboardingStep = 1;
+let editingZoneId = null;
+let draggedZoneElement = null;
 
 const authView = document.querySelector("#authView");
 const onboardingView = document.querySelector("#onboardingView");
 const homeView = document.querySelector("#homeView");
 const patrolView = document.querySelector("#patrolView");
 const settingsView = document.querySelector("#settingsView");
+const zoneManagementView = document.querySelector("#zoneManagementView");
 const pondList = document.querySelector("#pondList");
 const emptyState = document.querySelector("#emptyState");
 const gridSelect = document.querySelector("#gridColumns");
@@ -35,6 +38,8 @@ const recordForm = document.querySelector("#recordForm");
 const nameDialog = document.querySelector("#nameDialog");
 const nameForm = document.querySelector("#nameForm");
 const developmentDialog = document.querySelector("#developmentDialog");
+const zoneEditorDialog = document.querySelector("#zoneEditorDialog");
+const zoneEditorForm = document.querySelector("#zoneEditorForm");
 
 function localDateKey(date) {
   const year = date.getFullYear();
@@ -67,9 +72,12 @@ function loadPatrolState() {
 }
 
 function normalizeFarmData(saved) {
+  const zones = Array.isArray(saved?.zones) ? saved.zones.map((zone, index) => ({ ...zone, order: Number.isFinite(zone.order) ? zone.order : index })) : [];
+  zones.sort((a, b) => a.order - b.order);
+  zones.forEach((zone, index) => { zone.order = index; });
   return {
     farm: saved?.farm || null,
-    zones: Array.isArray(saved?.zones) ? saved.zones : [],
+    zones,
     ponds: Array.isArray(saved?.ponds) ? saved.ponds.map((pond) => ({ ...pond, status: pond.status || "active" })) : [],
     onboardingCompleted: saved?.onboardingCompleted === true
   };
@@ -111,7 +119,7 @@ function syncFarmPondsToPatrol() {
 }
 
 function hideAppViews() {
-  [authView, onboardingView, homeView, patrolView, settingsView].forEach((view) => { view.hidden = true; });
+  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView].forEach((view) => { view.hidden = true; });
 }
 
 function routeApp() {
@@ -196,7 +204,7 @@ function addZone(name, errorElement) {
   const cleaned = cleanName(name);
   if (!cleaned) { errorElement.textContent = "請輸入區域名稱。"; return false; }
   if (farmData.zones.some((zone) => sameName(zone.name, cleaned))) { errorElement.textContent = "這個區域名稱已經使用過了。"; return false; }
-  farmData.zones.push({ id: createId("zone"), name: cleaned });
+  farmData.zones.push({ id: createId("zone"), name: cleaned, order: farmData.zones.length });
   errorElement.textContent = "";
   saveFarmData();
   return true;
@@ -276,6 +284,61 @@ function showSettings() {
   document.querySelector("#settingsFarmName").value = farmData.farm?.name || "";
   renderSettings();
   window.scrollTo(0, 0);
+}
+
+function showZoneManagement() {
+  hideAppViews();
+  zoneManagementView.hidden = false;
+  saveFarmData();
+  renderZoneManagement();
+  window.scrollTo(0, 0);
+}
+
+function renderZoneManagement() {
+  farmData.zones.sort((a, b) => a.order - b.order);
+  const list = document.querySelector("#zoneManagementList");
+  list.replaceChildren(...farmData.zones.map((zone, index) => zoneSortItem(zone, index)));
+  document.querySelector("#zoneEmptyState").hidden = farmData.zones.length > 0;
+}
+
+function zoneSortItem(zone, index) {
+  const item = document.createElement("article");
+  item.className = "zone-sort-item";
+  item.dataset.zoneId = zone.id;
+  item.draggable = true;
+  const handle = document.createElement("button");
+  handle.className = "zone-drag-handle";
+  handle.type = "button";
+  handle.setAttribute("aria-label", "拖曳排序");
+  handle.textContent = "⠿";
+  const name = document.createElement("button");
+  name.className = "zone-name-button";
+  name.type = "button";
+  name.textContent = zone.name;
+  name.addEventListener("click", () => openZoneEditor(zone.id));
+  const order = document.createElement("span");
+  order.className = "zone-order";
+  order.textContent = String(index + 1);
+  item.append(handle, name, order);
+  return item;
+}
+
+function openZoneEditor(zoneId = null) {
+  editingZoneId = zoneId;
+  const zone = farmData.zones.find((item) => item.id === zoneId);
+  document.querySelector("#zoneEditorTitle").textContent = zone ? "修改區域" : "新增區域";
+  document.querySelector("#zoneEditorName").value = zone?.name || "";
+  document.querySelector("#zoneEditorError").textContent = "";
+  zoneEditorDialog.showModal();
+  document.querySelector("#zoneEditorName").focus();
+}
+
+function persistZoneOrder() {
+  const ids = [...document.querySelectorAll("#zoneManagementList [data-zone-id]")].map((item) => item.dataset.zoneId);
+  farmData.zones.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  farmData.zones.forEach((zone, index) => { zone.order = index; });
+  saveFarmData();
+  renderZoneManagement();
 }
 
 function renderSettings() {
@@ -391,6 +454,80 @@ document.querySelector("#settingsPondForm").addEventListener("submit", (event) =
   if (addFarmPond(zoneId, input.value, document.querySelector("#settingsPondError"))) { input.value = ""; renderSettings(); }
 });
 
+zoneEditorForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = cleanName(event.currentTarget.elements.zoneName.value);
+  const error = document.querySelector("#zoneEditorError");
+  if (!name) { error.textContent = "請輸入區域名稱。"; return; }
+  if (farmData.zones.some((zone) => zone.id !== editingZoneId && sameName(zone.name, name))) {
+    error.textContent = "這個區域名稱已經使用過了。";
+    return;
+  }
+  const zone = farmData.zones.find((item) => item.id === editingZoneId);
+  if (zone) zone.name = name;
+  else farmData.zones.push({ id: createId("zone"), name, order: farmData.zones.length });
+  farmData.zones.forEach((item, index) => { item.order = index; });
+  error.textContent = "";
+  saveFarmData();
+  zoneEditorDialog.close();
+  renderZoneManagement();
+});
+
+document.querySelector("#addZoneFab").addEventListener("click", () => openZoneEditor());
+
+const zoneManagementList = document.querySelector("#zoneManagementList");
+zoneManagementList.addEventListener("dragstart", (event) => {
+  draggedZoneElement = event.target.closest(".zone-sort-item");
+  if (!draggedZoneElement) return;
+  draggedZoneElement.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+});
+zoneManagementList.addEventListener("dragover", (event) => {
+  if (!draggedZoneElement) return;
+  event.preventDefault();
+  const target = event.target.closest(".zone-sort-item");
+  if (!target || target === draggedZoneElement) return;
+  const after = event.clientY > target.getBoundingClientRect().top + target.offsetHeight / 2;
+  zoneManagementList.insertBefore(draggedZoneElement, after ? target.nextSibling : target);
+});
+zoneManagementList.addEventListener("drop", (event) => {
+  event.preventDefault();
+  if (!draggedZoneElement) return;
+  draggedZoneElement.classList.remove("dragging");
+  persistZoneOrder();
+  draggedZoneElement = null;
+});
+zoneManagementList.addEventListener("dragend", () => {
+  draggedZoneElement?.classList.remove("dragging");
+  draggedZoneElement = null;
+});
+zoneManagementList.addEventListener("pointerdown", (event) => {
+  const handle = event.target.closest(".zone-drag-handle");
+  if (!handle || event.pointerType === "mouse") return;
+  draggedZoneElement = handle.closest(".zone-sort-item");
+  draggedZoneElement.classList.add("dragging");
+  handle.setPointerCapture(event.pointerId);
+  event.preventDefault();
+});
+zoneManagementList.addEventListener("pointermove", (event) => {
+  if (!draggedZoneElement || event.pointerType === "mouse") return;
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".zone-sort-item");
+  if (!target || target === draggedZoneElement) return;
+  const after = event.clientY > target.getBoundingClientRect().top + target.offsetHeight / 2;
+  zoneManagementList.insertBefore(draggedZoneElement, after ? target.nextSibling : target);
+});
+zoneManagementList.addEventListener("pointerup", (event) => {
+  if (!draggedZoneElement || event.pointerType === "mouse") return;
+  draggedZoneElement.classList.remove("dragging");
+  draggedZoneElement = null;
+  persistZoneOrder();
+});
+zoneManagementList.addEventListener("pointercancel", () => {
+  draggedZoneElement?.classList.remove("dragging");
+  draggedZoneElement = null;
+  renderZoneManagement();
+});
+
 document.querySelector("#logoutButton").addEventListener("click", () => {
   account = { phone: account.phone || "", isLoggedIn: false };
   saveAccount();
@@ -404,7 +541,7 @@ document.querySelector("#logoutButton").addEventListener("click", () => {
 document.querySelectorAll("[data-feature]").forEach((button) => button.addEventListener("click", () => {
   const feature = button.dataset.feature;
   if (feature === "patrol") showPatrol();
-  else if (feature === "settings" || feature === "profile") showSettings();
+  else if (feature === "settings" || feature === "profile") showZoneManagement();
   else showDevelopment();
 }));
 document.querySelectorAll("[data-home]").forEach((button) => button.addEventListener("click", showHome));
@@ -453,6 +590,7 @@ document.addEventListener("click", (event) => {
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
   if (action === "back-phone") showPhoneStep();
+  if (action === "open-full-settings") showSettings();
   if (action === "skip-onboarding") {
     farmData.onboardingCompleted = true;
     saveFarmData();
@@ -487,6 +625,7 @@ document.addEventListener("click", (event) => {
   if (action === "close") recordDialog.close();
   if (action === "close-name") nameDialog.close();
   if (action === "close-development") developmentDialog.close();
+  if (action === "close-zone-editor") zoneEditorDialog.close();
 });
 
 document.querySelector("#today").textContent = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date());
