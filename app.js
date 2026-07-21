@@ -369,6 +369,12 @@ function feedingRecordTimestamp(record) {
   return Number.isNaN(value) ? 0 : value;
 }
 
+function latestFeedingRecord(pondId, excludedRecordId = "") {
+  return feedingData.records
+    .filter((record) => record.pondId === pondId && record.id !== excludedRecordId)
+    .sort((a, b) => feedingRecordTimestamp(b) - feedingRecordTimestamp(a))[0] || null;
+}
+
 function feedingDateLabel(dateKey) {
   const date = new Date(`${dateKey}T00:00:00`);
   const today = new Date(`${todayKey}T00:00:00`);
@@ -379,9 +385,7 @@ function feedingDateLabel(dateKey) {
 }
 
 function renderPreviousFeedingRecord(pondId, currentRecord) {
-  const previous = feedingData.records
-    .filter((record) => record.pondId === pondId && record.id !== currentRecord?.id)
-    .sort((a, b) => feedingRecordTimestamp(b) - feedingRecordTimestamp(a))[0];
+  const previous = latestFeedingRecord(pondId, currentRecord?.id);
   const empty = document.querySelector("#previousFeedingEmpty");
   const details = document.querySelector("#previousFeedingDetails");
   empty.hidden = Boolean(previous);
@@ -405,13 +409,11 @@ function showFeedingRecord(pondId) {
   feedingRecordForm.reset();
   document.querySelector("#feedingRecordError").textContent = "";
   const existing = feedingData.records.find((record) => record.pondId === pondId && record.date === todayKey);
+  const latest = latestFeedingRecord(pondId);
   renderPreviousFeedingRecord(pondId, existing);
-  if (existing) {
-    feedingRecordForm.elements.previousMeal.value = existing.previousMeal;
-    feedingRecordForm.elements.brand.value = existing.brand;
-    feedingRecordForm.elements.feedNumber.value = existing.feedNumber;
-    feedingRecordForm.elements.kilograms.value = existing.kilograms ?? "";
-    feedingRecordForm.elements.notes.value = existing.notes || "";
+  if (latest) {
+    feedingRecordForm.elements.brand.value = latest.brand || "";
+    feedingRecordForm.elements.feedNumber.value = latest.feedNumber || "";
   }
   window.scrollTo(0, 0);
 }
