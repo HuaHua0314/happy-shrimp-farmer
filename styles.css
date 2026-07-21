@@ -86,7 +86,7 @@ legend, .notes-label { display: block; margin-bottom: 9px; font-weight: 800; }
 .choice { position: relative; } .choice input { position: absolute; opacity: 0; }
 .choice span { display: block; padding: 13px 15px; border: 2px solid var(--line); border-radius: 14px; font-weight: 700; }
 .choice input:checked + span { border-color: var(--red); background: var(--red-soft); }
-textarea, #pondName, #waterColor, #additives { width: 100%; margin-bottom: 17px; border: 2px solid var(--line); border-radius: 14px; padding: 12px 13px; }
+textarea { width: 100%; margin-bottom: 17px; border: 2px solid var(--line); border-radius: 14px; padding: 12px 13px; }
 textarea { resize: vertical; } .dialog-actions { display: flex; justify-content: end; gap: 9px; }
 .development-message { padding: 34px 26px; text-align: center; } .development-message h2 { margin-top: 10px; } .development-message p { color: var(--muted); }
 .development-icon { font-size: 2.5rem; }

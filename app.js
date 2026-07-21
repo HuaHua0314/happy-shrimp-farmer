@@ -763,10 +763,15 @@ shrimpPatrolRecordForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
   const now = new Date();
+  const pond = farmData.ponds.find((item) => item.id === currentShrimpPatrolPondId);
   const existingIndex = shrimpPatrolData.records.findIndex((record) => record.pondId === currentShrimpPatrolPondId && record.date === todayKey);
   const existing = existingIndex >= 0 ? shrimpPatrolData.records[existingIndex] : null;
   const photoFile = event.currentTarget.elements.waterPhoto.files?.[0];
   const error = document.querySelector("#shrimpPatrolRecordError");
+  if (!pond) {
+    error.textContent = "找不到這個池子，請返回池子列表後再試一次。";
+    return;
+  }
   let waterPhoto = existing?.waterPhoto || "";
   try {
     if (photoFile) waterPhoto = await patrolPhotoDataUrl(photoFile);
@@ -778,12 +783,15 @@ shrimpPatrolRecordForm.addEventListener("submit", async (event) => {
   const hasDeadShrimp = shrimpConditions.includes("deadShrimp");
   const hasOtherShrimpCondition = shrimpConditions.includes("other");
   const deadShrimpCount = hasDeadShrimp ? data.get("deadShrimpCount") || "" : "";
+  const recordTime = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
+  const hasMolting = shrimpConditions.includes("molting");
   const record = {
     id: existing?.id || createId("shrimpPatrol"),
     pondId: currentShrimpPatrolPondId,
+    pondName: pond.name,
     zoneId: currentShrimpPatrolZoneId,
     date: todayKey,
-    time: new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now),
+    time: recordTime,
     overall: data.get("overall") || "",
     waterColor: data.get("waterColor") || "",
     waterwheel: data.get("waterwheel") || "",
@@ -792,7 +800,8 @@ shrimpPatrolRecordForm.addEventListener("submit", async (event) => {
     deadShrimpCount,
     deadShrimpOtherCount: hasDeadShrimp && deadShrimpCount === "other" ? Number(data.get("deadShrimpOtherCount")) || null : null,
     shrimpOther: hasOtherShrimpCondition ? cleanName(data.get("shrimpOther")) : "",
-    hasMolting: shrimpConditions.includes("molting"),
+    hasMolting,
+    moltingEvent: hasMolting ? { pondId: pond.id, pondName: pond.name, date: todayKey, time: recordTime } : null,
     notes: cleanName(data.get("notes")),
     waterPhoto,
     waterPhotoName: photoFile?.name || existing?.waterPhotoName || "",
