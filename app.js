@@ -14,6 +14,9 @@ let feedingData = loadJson(FEEDING_KEY, { records: [] });
 if (!Array.isArray(feedingData.records)) feedingData = { records: [] };
 let shrimpPatrolData = loadJson(SHRIMP_PATROL_KEY, { records: [] });
 if (!Array.isArray(shrimpPatrolData.records)) shrimpPatrolData = { records: [] };
+if (!Array.isArray(shrimpPatrolData.customConditions)) {
+  shrimpPatrolData.customConditions = [...new Set(shrimpPatrolData.records.map((record) => cleanName(record.shrimpOther)).filter(Boolean))];
+}
 let pendingPhone = "";
 let onboardingStep = 1;
 let editingZoneId = null;
@@ -305,13 +308,29 @@ function setPatrolRadioValue(form, name, value) {
   if (value) form.elements[name].value = value;
 }
 
-function renderShrimpOtherHistory() {
-  const values = [...new Set(shrimpPatrolData.records.map((record) => cleanName(record.shrimpOther)).filter(Boolean))];
+function allShrimpCustomConditions() {
+  const candidates = [
+    ...shrimpPatrolData.customConditions,
+    ...shrimpPatrolData.records.flatMap((record) => Array.isArray(record.customConditions) ? record.customConditions : [record.shrimpOther])
+  ].map(cleanName).filter(Boolean);
+  return candidates.filter((value, index) => candidates.findIndex((candidate) => sameName(candidate, value)) === index);
+}
+
+function selectedShrimpCustomConditions() {
+  return [...document.querySelectorAll("#shrimpOtherHistory .custom-condition-button[aria-pressed='true']")].map((button) => button.dataset.value);
+}
+
+function renderShrimpOtherHistory(selectedValues = []) {
+  const values = allShrimpCustomConditions();
   const list = document.querySelector("#shrimpOtherHistory");
   list.replaceChildren(...values.map((value) => {
-    const option = document.createElement("option");
-    option.value = value;
-    return option;
+    const button = document.createElement("button");
+    button.className = "custom-condition-button";
+    button.type = "button";
+    button.dataset.value = value;
+    button.textContent = value;
+    button.setAttribute("aria-pressed", selectedValues.some((selected) => sameName(selected, value)) ? "true" : "false");
+    return button;
   }));
 }
 
@@ -321,7 +340,16 @@ function updateShrimpConditionalFields() {
   const hasOther = conditions.includes("other");
   document.querySelector("#deadShrimpDetails").hidden = !hasDeadShrimp;
   document.querySelector("#shrimpOtherDetails").hidden = !hasOther;
-  document.querySelector("#deadShrimpOtherWrap").hidden = !hasDeadShrimp || shrimpPatrolRecordForm.elements.deadShrimpCount.value !== "other";
+  document.querySelector("#deadShrimpOtherWrap").hidden = !hasDeadShrimp || shrimpPatrolRecordForm.elements.deadShrimpCount.value !== "more";
+  if (!hasDeadShrimp) {
+    shrimpPatrolRecordForm.querySelectorAll('[name="deadShrimpCount"]').forEach((input) => { input.checked = false; });
+    shrimpPatrolRecordForm.elements.deadShrimpOtherCount.value = "";
+  }
+  if (!hasOther) {
+    document.querySelectorAll("#shrimpOtherHistory .custom-condition-button").forEach((button) => { button.setAttribute("aria-pressed", "false"); });
+    document.querySelector("#shrimpOtherContent").value = "";
+    document.querySelector("#shrimpOtherError").textContent = "";
+  }
 }
 
 function showShrimpPatrolRecord(pondId) {
@@ -335,9 +363,10 @@ function showShrimpPatrolRecord(pondId) {
   document.querySelector("#shrimpPatrolDate").textContent = "今天";
   document.querySelector("#shrimpPatrolTime").textContent = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
   document.querySelector("#shrimpPatrolRecordError").textContent = "";
-  renderShrimpOtherHistory();
   const photoStatus = document.querySelector("#shrimpPatrolPhotoStatus");
   const existing = shrimpPatrolData.records.find((record) => record.pondId === pondId && record.date === todayKey);
+  const selectedCustomConditions = Array.isArray(existing?.customConditions) ? existing.customConditions : [existing?.shrimpOther].filter(Boolean);
+  renderShrimpOtherHistory(selectedCustomConditions);
   photoStatus.textContent = existing?.waterPhoto ? "已保留今天的水色照片" : "沒有選擇照片";
   if (existing) {
     setPatrolRadioValue(shrimpPatrolRecordForm, "overall", existing.overall);
@@ -347,9 +376,8 @@ function showShrimpPatrolRecord(pondId) {
     const savedConditions = Array.isArray(existing.shrimpConditions) ? existing.shrimpConditions : [];
     const conditions = savedConditions.some((value) => value !== "normal") ? savedConditions.filter((value) => value !== "normal") : savedConditions;
     shrimpPatrolRecordForm.querySelectorAll('[name="shrimpCondition"]').forEach((input) => { input.checked = conditions.includes(input.value); });
-    setPatrolRadioValue(shrimpPatrolRecordForm, "deadShrimpCount", existing.deadShrimpCount);
+    setPatrolRadioValue(shrimpPatrolRecordForm, "deadShrimpCount", ["other", "over30"].includes(existing.deadShrimpCount) ? "more" : existing.deadShrimpCount);
     shrimpPatrolRecordForm.elements.deadShrimpOtherCount.value = existing.deadShrimpOtherCount ?? "";
-    shrimpPatrolRecordForm.elements.shrimpOther.value = existing.shrimpOther || "";
     shrimpPatrolRecordForm.elements.notes.value = existing.notes || "";
   }
   updateShrimpConditionalFields();
@@ -745,6 +773,37 @@ document.querySelector("#shrimpPatrolPhoto").addEventListener("change", (event) 
   document.querySelector("#shrimpPatrolPhotoStatus").textContent = file ? file.name : "沒有選擇照片";
 });
 
+document.querySelector("#shrimpOtherHistory").addEventListener("click", (event) => {
+  const button = event.target.closest(".custom-condition-button");
+  if (!button) return;
+  button.setAttribute("aria-pressed", button.getAttribute("aria-pressed") === "true" ? "false" : "true");
+});
+
+document.querySelector("#addShrimpOtherButton").addEventListener("click", () => {
+  const input = document.querySelector("#shrimpOtherContent");
+  const error = document.querySelector("#shrimpOtherError");
+  const name = cleanName(input.value);
+  if (!name) {
+    error.textContent = "請輸入自訂狀況名稱。";
+    return;
+  }
+  const selected = selectedShrimpCustomConditions();
+  const existing = allShrimpCustomConditions().find((value) => sameName(value, name));
+  if (!existing) {
+    shrimpPatrolData.customConditions.push(name);
+    try {
+      saveShrimpPatrolData();
+    } catch (_) {
+      shrimpPatrolData.customConditions.pop();
+      error.textContent = "目前無法儲存這個狀況，請稍後再試。";
+      return;
+    }
+  }
+  renderShrimpOtherHistory([...selected, existing || name]);
+  input.value = "";
+  error.textContent = existing ? "這個狀況已存在，已為你選取。" : "";
+});
+
 shrimpPatrolRecordForm.addEventListener("change", (event) => {
   const changed = event.target.closest('[name="shrimpCondition"]');
   if (changed?.checked) {
@@ -783,6 +842,7 @@ shrimpPatrolRecordForm.addEventListener("submit", async (event) => {
   const hasDeadShrimp = shrimpConditions.includes("deadShrimp");
   const hasOtherShrimpCondition = shrimpConditions.includes("other");
   const deadShrimpCount = hasDeadShrimp ? data.get("deadShrimpCount") || "" : "";
+  const customConditions = hasOtherShrimpCondition ? selectedShrimpCustomConditions() : [];
   const recordTime = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
   const hasMolting = shrimpConditions.includes("molting");
   const record = {
@@ -798,10 +858,11 @@ shrimpPatrolRecordForm.addEventListener("submit", async (event) => {
     drainage: data.get("drainage") || "",
     shrimpConditions,
     deadShrimpCount,
-    deadShrimpOtherCount: hasDeadShrimp && deadShrimpCount === "other" ? Number(data.get("deadShrimpOtherCount")) || null : null,
-    shrimpOther: hasOtherShrimpCondition ? cleanName(data.get("shrimpOther")) : "",
+    deadShrimpOtherCount: hasDeadShrimp && deadShrimpCount === "more" ? Number(data.get("deadShrimpOtherCount")) || null : null,
+    customConditions,
+    shrimpOther: customConditions[0] || "",
     hasMolting,
-    moltingEvent: hasMolting ? { pondId: pond.id, pondName: pond.name, date: todayKey, time: recordTime } : null,
+    moltingEvent: hasMolting ? { pondId: pond.id, zoneId: currentShrimpPatrolZoneId, pondName: pond.name, date: todayKey, time: recordTime, isMolting: true } : null,
     notes: cleanName(data.get("notes")),
     waterPhoto,
     waterPhotoName: photoFile?.name || existing?.waterPhotoName || "",
@@ -812,12 +873,12 @@ shrimpPatrolRecordForm.addEventListener("submit", async (event) => {
   if (existingIndex >= 0) records[existingIndex] = record;
   else records.push(record);
   try {
-    saveJson(SHRIMP_PATROL_KEY, { records });
+    saveJson(SHRIMP_PATROL_KEY, { records, customConditions: shrimpPatrolData.customConditions });
   } catch (_) {
     error.textContent = "儲存空間不足，請改用較小的照片或不附照片。";
     return;
   }
-  shrimpPatrolData = { records };
+  shrimpPatrolData = { records, customConditions: shrimpPatrolData.customConditions };
   error.textContent = "";
   showShrimpPatrolPonds(currentShrimpPatrolZoneId);
 });

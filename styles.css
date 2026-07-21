@@ -198,6 +198,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .conditional-fields { margin-top: 16px; border-radius: 17px; padding: 14px; background: #f7f7f8; }
 .conditional-input { display: grid; gap: 8px; margin-top: 14px; font-weight: 800; }
 .conditional-input .flow-input { margin-bottom: 0; }
+.custom-condition-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.custom-condition-list:empty::after { grid-column: 1 / -1; content: "尚無自訂狀況"; color: var(--muted); font-size: .88rem; }
+.custom-condition-button { min-height: 50px; border: 2px solid var(--line); border-radius: 14px; padding: 9px; background: white; color: var(--ink); font: inherit; font-weight: 750; }
+.custom-condition-button[aria-pressed="true"] { border-color: var(--red); background: var(--red-soft); color: var(--red-dark); }
+.custom-condition-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.custom-condition-add .button { min-height: 54px; }
 .zone-fab { position: fixed; z-index: 15; right: max(22px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom)); display: grid; place-items: center; width: 62px; height: 62px; border: 0; border-radius: 50%; background: var(--red); color: white; box-shadow: 0 12px 30px rgba(232,72,67,.32); font-size: 2rem; line-height: 1; }
 @media (max-width: 600px) {
   .topbar { grid-template-columns: auto 1fr; } .topbar > .button { grid-column: 1 / -1; width: 100%; }
