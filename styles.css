@@ -204,6 +204,30 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .custom-condition-button[aria-pressed="true"] { border-color: var(--red); background: var(--red-soft); color: var(--red-dark); }
 .custom-condition-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .custom-condition-add .button { min-height: 54px; }
+.fertilizer-section { margin-bottom: 22px; }
+.fertilizer-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+.fertilizer-heading h2 { margin: 0; font-size: 1.15rem; }
+.fertilizer-heading .button { min-height: 46px; padding-inline: 12px; }
+.fertilizer-items { display: grid; gap: 12px; }
+.fertilizer-item { border: 1px solid var(--line); border-radius: 18px; padding: 15px; background: #fafafa; }
+.fertilizer-item-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.fertilizer-remove { border: 0; background: transparent; color: #a34a46; font: inherit; font-size: .86rem; font-weight: 750; }
+.fertilizer-item label, .apply-quantities label { display: grid; gap: 6px; color: var(--muted); font-size: .88rem; font-weight: 750; }
+.fertilizer-item .flow-input, .apply-quantities .flow-input { margin-bottom: 10px; color: var(--ink); }
+.fertilizer-field-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fertilizer-amount { margin: 2px 0 0; text-align: right; font-size: .95rem; }
+.fertilizing-total { margin: 17px 0; border-radius: 16px; padding: 15px; background: #fff3e7; font-size: 1.05rem; font-weight: 750; text-align: center; }
+.fertilizing-total strong { color: var(--red-dark); font-size: 1.3rem; }
+.fertilizing-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.fertilizing-actions .button { min-height: 56px; }
+.apply-fertilizer-dialog { width: min(620px, calc(100% - 24px)); max-height: min(88dvh, 820px); }
+.apply-hint { margin: 0 0 12px; }
+.apply-fertilizer-ponds { display: grid; gap: 10px; max-height: 58dvh; overflow-y: auto; padding-right: 2px; }
+.apply-zone-heading { margin: 10px 0 0; font-size: 1rem; }
+.apply-pond-card { border: 1px solid var(--line); border-radius: 17px; padding: 13px; background: #fafafa; }
+.apply-pond-toggle { display: flex; align-items: center; gap: 11px; min-height: 42px; font-size: 1.02rem; }
+.apply-pond-toggle input { width: 22px; height: 22px; accent-color: var(--red); }
+.apply-quantities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
 .zone-fab { position: fixed; z-index: 15; right: max(22px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom)); display: grid; place-items: center; width: 62px; height: 62px; border: 0; border-radius: 50%; background: var(--red); color: white; box-shadow: 0 12px 30px rgba(232,72,67,.32); font-size: 2rem; line-height: 1; }
 @media (max-width: 600px) {
   .topbar { grid-template-columns: auto 1fr; } .topbar > .button { grid-column: 1 / -1; width: 100%; }
@@ -211,6 +235,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .section-heading { align-items: flex-start; flex-direction: column; }
   .flow-card { padding: 24px 18px; }
   .pond-manage-item { grid-template-columns: 1fr 100px; }
+  .fertilizer-field-grid { grid-template-columns: 1fr 1fr; }
+  .fertilizer-field-grid label:first-child { grid-column: 1 / -1; }
+  .fertilizing-actions { grid-template-columns: 1fr; }
   .pond-manage-item .button { grid-column: 1 / -1; }
 }
 @media (min-width: 601px) { .bottom-nav { left: 50%; width: min(820px, 100%); transform: translateX(-50%); border: 1px solid var(--line); border-bottom: 0; border-radius: 24px 24px 0 0; } }

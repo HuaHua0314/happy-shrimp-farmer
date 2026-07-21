@@ -3,6 +3,8 @@ const ACCOUNT_KEY = "happyShrimpFarmer.account.v1";
 const FARM_KEY = "happyShrimpFarmer.farm.v1";
 const FEEDING_KEY = "happyShrimpFarmer.feeding.v1";
 const SHRIMP_PATROL_KEY = "happyShrimpFarmer.shrimpPatrol.v1";
+const FERTILIZING_KEY = "happyShrimpFarmer.fertilizing.v1";
+const FERTILIZER_KEY = "happyShrimpFarmer.fertilizers.v1";
 const TEST_CODE = "123456";
 const DEFAULT_PONDS = ["一號池", "二號池", "育苗池"];
 
@@ -17,6 +19,11 @@ if (!Array.isArray(shrimpPatrolData.records)) shrimpPatrolData = { records: [] }
 if (!Array.isArray(shrimpPatrolData.customConditions)) {
   shrimpPatrolData.customConditions = [...new Set(shrimpPatrolData.records.map((record) => cleanName(record.shrimpOther)).filter(Boolean))];
 }
+let fertilizingData = loadJson(FERTILIZING_KEY, { records: [] });
+if (!Array.isArray(fertilizingData.records)) fertilizingData = { records: [] };
+let fertilizerData = loadJson(FERTILIZER_KEY, { items: [] });
+if (Array.isArray(fertilizerData)) fertilizerData = { items: fertilizerData };
+if (!Array.isArray(fertilizerData.items)) fertilizerData = { items: [] };
 let pendingPhone = "";
 let onboardingStep = 1;
 let editingZoneId = null;
@@ -28,6 +35,9 @@ let currentFeedingZoneId = null;
 let currentFeedingPondId = null;
 let currentShrimpPatrolZoneId = null;
 let currentShrimpPatrolPondId = null;
+let currentFertilizingZoneId = null;
+let currentFertilizingPondId = null;
+let pendingFertilizerItems = [];
 
 const authView = document.querySelector("#authView");
 const onboardingView = document.querySelector("#onboardingView");
@@ -42,6 +52,9 @@ const feedingRecordView = document.querySelector("#feedingRecordView");
 const shrimpPatrolZoneView = document.querySelector("#shrimpPatrolZoneView");
 const shrimpPatrolPondView = document.querySelector("#shrimpPatrolPondView");
 const shrimpPatrolRecordView = document.querySelector("#shrimpPatrolRecordView");
+const fertilizingZoneView = document.querySelector("#fertilizingZoneView");
+const fertilizingPondView = document.querySelector("#fertilizingPondView");
+const fertilizingRecordView = document.querySelector("#fertilizingRecordView");
 const developmentDialog = document.querySelector("#developmentDialog");
 const zoneEditorDialog = document.querySelector("#zoneEditorDialog");
 const zoneEditorForm = document.querySelector("#zoneEditorForm");
@@ -50,6 +63,9 @@ const pondEditorDialog = document.querySelector("#pondEditorDialog");
 const pondEditorForm = document.querySelector("#pondEditorForm");
 const feedingRecordForm = document.querySelector("#feedingRecordForm");
 const shrimpPatrolRecordForm = document.querySelector("#shrimpPatrolRecordForm");
+const fertilizingRecordForm = document.querySelector("#fertilizingRecordForm");
+const applyFertilizerDialog = document.querySelector("#applyFertilizerDialog");
+const applyFertilizerForm = document.querySelector("#applyFertilizerForm");
 
 function localDateKey(date) {
   const year = date.getFullYear();
@@ -98,6 +114,8 @@ function saveAccount() { saveJson(ACCOUNT_KEY, account); }
 function saveFarmData() { saveJson(FARM_KEY, farmData); }
 function saveFeedingData() { saveJson(FEEDING_KEY, feedingData); }
 function saveShrimpPatrolData() { saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData); }
+function saveFertilizingData() { saveJson(FERTILIZING_KEY, fertilizingData); }
+function saveFertilizerData() { saveJson(FERTILIZER_KEY, fertilizerData); }
 function createId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`; }
 function cleanName(value) { return String(value || "").trim().replace(/\s+/g, " "); }
 function sameName(a, b) { return cleanName(a).toLocaleLowerCase("zh-Hant") === cleanName(b).toLocaleLowerCase("zh-Hant"); }
@@ -131,7 +149,7 @@ function syncFarmPondsToPatrol() {
 }
 
 function hideAppViews() {
-  [authView, onboardingView, homeView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView, feedingZoneView, feedingPondView, feedingRecordView, shrimpPatrolZoneView, shrimpPatrolPondView, shrimpPatrolRecordView].forEach((view) => { view.hidden = true; });
+  [authView, onboardingView, homeView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView, feedingZoneView, feedingPondView, feedingRecordView, shrimpPatrolZoneView, shrimpPatrolPondView, shrimpPatrolRecordView, fertilizingZoneView, fertilizingPondView, fertilizingRecordView].forEach((view) => { view.hidden = true; });
 }
 
 function routeApp() {
@@ -412,6 +430,163 @@ function shrimpPatrolHasAbnormal(record) {
     || record.waterwheel === "abnormal"
     || record.drainage === "abnormal"
     || record.shrimpConditions.some((value) => value !== "normal");
+}
+
+function showFertilizingZones() {
+  hideAppViews();
+  fertilizingZoneView.hidden = false;
+  const zones = [...farmData.zones].sort((a, b) => a.order - b.order);
+  const list = document.querySelector("#fertilizingZoneList");
+  list.replaceChildren(...zones.map((zone) => {
+    const button = document.createElement("button");
+    button.className = "settings-menu-item";
+    button.type = "button";
+    const count = farmData.ponds.filter((pond) => pond.zoneId === zone.id).length;
+    button.innerHTML = `<span><strong></strong><small>${count} 個池子</small></span><b aria-hidden="true">›</b>`;
+    button.querySelector("strong").textContent = zone.name;
+    button.addEventListener("click", () => showFertilizingPonds(zone.id));
+    return button;
+  }));
+  document.querySelector("#fertilizingZoneEmptyState").hidden = zones.length > 0;
+  window.scrollTo(0, 0);
+}
+
+function fertilizingCompletedToday(pondId) {
+  return fertilizingData.records.some((record) => record.pondId === pondId && record.date === todayKey);
+}
+
+function showFertilizingPonds(zoneId) {
+  const zone = farmData.zones.find((item) => item.id === zoneId);
+  if (!zone) { showFertilizingZones(); return; }
+  currentFertilizingZoneId = zoneId;
+  hideAppViews();
+  fertilizingPondView.hidden = false;
+  document.querySelector("#fertilizingZoneTitle").textContent = zone.name;
+  renderFertilizingPonds();
+  window.scrollTo(0, 0);
+}
+
+function renderFertilizingPonds() {
+  const ponds = farmData.ponds.filter((pond) => pond.zoneId === currentFertilizingZoneId).sort((a, b) => a.order - b.order);
+  const completed = ponds.filter((pond) => fertilizingCompletedToday(pond.id)).length;
+  const list = document.querySelector("#fertilizingPondList");
+  list.replaceChildren(...ponds.map((pond) => {
+    const done = fertilizingCompletedToday(pond.id);
+    const button = document.createElement("button");
+    button.className = `feeding-pond-item${done ? " completed" : ""}`;
+    button.type = "button";
+    button.setAttribute("role", "listitem");
+    const name = document.createElement("strong");
+    if (done) {
+      const check = document.createElement("span");
+      check.className = "feeding-completed-check";
+      check.textContent = "✓";
+      name.append(check, ` ${pond.name}`);
+    } else name.textContent = pond.name;
+    button.append(name);
+    button.addEventListener("click", () => showFertilizingRecord(pond.id));
+    return button;
+  }));
+  document.querySelector("#fertilizingPondEmptyState").hidden = ponds.length > 0;
+  document.querySelector("#fertilizingProgressText").textContent = `已完成：${completed} / ${ponds.length}`;
+  document.querySelector("#fertilizingAllComplete").hidden = ponds.length === 0 || completed !== ponds.length;
+}
+
+function fertilizerDefaults(name) {
+  return fertilizerData.items.find((item) => sameName(item.name, name)) || null;
+}
+
+function renderFertilizerNameOptions() {
+  const list = document.querySelector("#fertilizerNameOptions");
+  list.replaceChildren(...fertilizerData.items.map((item) => {
+    const option = document.createElement("option");
+    option.value = item.name;
+    return option;
+  }));
+}
+
+function fertilizerAmount(quantity, unitPrice) {
+  return Number((Number(quantity || 0) * Number(unitPrice || 0)).toFixed(2));
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 2 }).format(Number(value || 0));
+}
+
+function addFertilizerItem(initial = {}) {
+  const item = document.createElement("article");
+  item.className = "fertilizer-item";
+  item.innerHTML = `<div class="fertilizer-item-heading"><strong>肥料</strong><button class="fertilizer-remove" type="button" aria-label="移除這項肥料">移除</button></div><label>肥料名稱<input class="flow-input fertilizer-name" list="fertilizerNameOptions" maxlength="50" placeholder="選擇或輸入名稱"></label><div class="fertilizer-field-grid"><label>使用量<input class="flow-input fertilizer-quantity" type="number" inputmode="decimal" min="0.01" step="0.01"></label><label>單位<input class="flow-input fertilizer-unit" maxlength="12" placeholder="公斤／包"></label><label>單價<input class="flow-input fertilizer-price" type="number" inputmode="decimal" min="0" step="0.01"></label></div><p class="fertilizer-amount">本項金額：<strong>0</strong> 元</p>`;
+  item.querySelector(".fertilizer-name").value = initial.name || "";
+  item.querySelector(".fertilizer-quantity").value = initial.quantity ?? "";
+  item.querySelector(".fertilizer-unit").value = initial.unit || "";
+  item.querySelector(".fertilizer-price").value = initial.unitPrice ?? "";
+  document.querySelector("#fertilizerItems").append(item);
+  updateFertilizingTotals();
+}
+
+function updateFertilizingTotals() {
+  let total = 0;
+  document.querySelectorAll("#fertilizerItems .fertilizer-item").forEach((item) => {
+    const amount = fertilizerAmount(item.querySelector(".fertilizer-quantity").value, item.querySelector(".fertilizer-price").value);
+    item.querySelector(".fertilizer-amount strong").textContent = formatMoney(amount);
+    total += amount;
+  });
+  document.querySelector("#fertilizingTotal").textContent = formatMoney(total);
+}
+
+function collectFertilizerItems(errorElement) {
+  const rows = [...document.querySelectorAll("#fertilizerItems .fertilizer-item")];
+  if (!rows.length) { errorElement.textContent = "請至少新增一項肥料。"; return null; }
+  const items = [];
+  for (const row of rows) {
+    const name = cleanName(row.querySelector(".fertilizer-name").value);
+    const quantity = Number(row.querySelector(".fertilizer-quantity").value);
+    const unit = cleanName(row.querySelector(".fertilizer-unit").value);
+    const unitPriceText = row.querySelector(".fertilizer-price").value.trim();
+    const unitPrice = Number(unitPriceText);
+    if (!name) { errorElement.textContent = "請輸入每項肥料名稱。"; return null; }
+    if (!Number.isFinite(quantity) || quantity <= 0) { errorElement.textContent = `請輸入「${name}」的使用量。`; return null; }
+    if (!unit) { errorElement.textContent = `請輸入「${name}」的單位。`; return null; }
+    if (unitPriceText === "" || !Number.isFinite(unitPrice) || unitPrice < 0) { errorElement.textContent = `請輸入「${name}」的單價。`; return null; }
+    items.push({ name, quantity, unit, unitPrice, amount: fertilizerAmount(quantity, unitPrice) });
+  }
+  errorElement.textContent = "";
+  return items;
+}
+
+function showFertilizingRecord(pondId) {
+  const pond = farmData.ponds.find((item) => item.id === pondId && item.zoneId === currentFertilizingZoneId);
+  if (!pond) { showFertilizingPonds(currentFertilizingZoneId); return; }
+  currentFertilizingPondId = pondId;
+  hideAppViews();
+  fertilizingRecordView.hidden = false;
+  fertilizingRecordForm.reset();
+  document.querySelector("#fertilizerItems").replaceChildren();
+  document.querySelector("#fertilizingPondTitle").textContent = pond.name;
+  document.querySelector("#fertilizingTime").textContent = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+  document.querySelector("#fertilizingRecordError").textContent = "";
+  renderFertilizerNameOptions();
+  addFertilizerItem();
+  window.scrollTo(0, 0);
+}
+
+function fertilizingRecordFor(pond, items, notes, now) {
+  const time = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
+  return { id: createId("fertilizing"), zoneId: pond.zoneId, pondId: pond.id, pondName: pond.name, date: todayKey, time, items, totalAmount: Number(items.reduce((sum, item) => sum + item.amount, 0).toFixed(2)), notes, createdAt: now.toISOString() };
+}
+
+function rememberNewFertilizers(items) {
+  const nextItems = [...fertilizerData.items];
+  items.forEach((item) => {
+    if (!nextItems.some((existing) => sameName(existing.name, item.name))) {
+      nextItems.push({ id: createId("fertilizer"), name: item.name, defaultUnit: item.unit, defaultPrice: item.unitPrice });
+    }
+  });
+  if (nextItems.length !== fertilizerData.items.length) {
+    saveJson(FERTILIZER_KEY, { items: nextItems });
+    fertilizerData = { items: nextItems };
+  }
 }
 
 function showFeedingZones() {
@@ -773,6 +948,148 @@ document.querySelector("#shrimpPatrolPhoto").addEventListener("change", (event) 
   document.querySelector("#shrimpPatrolPhotoStatus").textContent = file ? file.name : "沒有選擇照片";
 });
 
+document.querySelector("#addFertilizerItem").addEventListener("click", () => addFertilizerItem());
+
+document.querySelector("#fertilizerItems").addEventListener("click", (event) => {
+  const remove = event.target.closest(".fertilizer-remove");
+  if (!remove) return;
+  remove.closest(".fertilizer-item").remove();
+  updateFertilizingTotals();
+});
+
+document.querySelector("#fertilizerItems").addEventListener("input", (event) => {
+  if (event.target.matches(".fertilizer-quantity, .fertilizer-price")) updateFertilizingTotals();
+});
+
+document.querySelector("#fertilizerItems").addEventListener("change", (event) => {
+  if (!event.target.matches(".fertilizer-name")) return;
+  const defaults = fertilizerDefaults(event.target.value);
+  if (!defaults) return;
+  const row = event.target.closest(".fertilizer-item");
+  row.querySelector(".fertilizer-unit").value = defaults.defaultUnit ?? defaults.unit ?? "";
+  row.querySelector(".fertilizer-price").value = defaults.defaultPrice ?? defaults.unitPrice ?? defaults.price ?? "";
+  updateFertilizingTotals();
+});
+
+fertilizingRecordForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const error = document.querySelector("#fertilizingRecordError");
+  const items = collectFertilizerItems(error);
+  if (!items) return;
+  const pond = farmData.ponds.find((item) => item.id === currentFertilizingPondId);
+  if (!pond) { error.textContent = "找不到這個池子，請返回後再試一次。"; return; }
+  const record = fertilizingRecordFor(pond, items, cleanName(event.currentTarget.elements.notes.value), new Date());
+  fertilizingData.records.push(record);
+  try {
+    saveFertilizingData();
+    rememberNewFertilizers(items);
+  } catch (_) {
+    fertilizingData.records.pop();
+    try { saveFertilizingData(); } catch (_) {}
+    error.textContent = "目前無法儲存，請稍後再試。";
+    return;
+  }
+  showFertilizingPonds(currentFertilizingZoneId);
+});
+
+function renderApplyFertilizerPonds() {
+  const list = document.querySelector("#applyFertilizerPonds");
+  const zones = [...farmData.zones].sort((a, b) => a.order - b.order);
+  const nodes = [];
+  zones.forEach((zone) => {
+    const ponds = farmData.ponds.filter((pond) => pond.zoneId === zone.id && pond.id !== currentFertilizingPondId).sort((a, b) => a.order - b.order);
+    if (!ponds.length) return;
+    const heading = document.createElement("h3");
+    heading.className = "apply-zone-heading";
+    heading.textContent = zone.name;
+    nodes.push(heading);
+    ponds.forEach((pond) => {
+      const card = document.createElement("article");
+      card.className = "apply-pond-card";
+      card.dataset.pondId = pond.id;
+      const toggle = document.createElement("label");
+      toggle.className = "apply-pond-toggle";
+      toggle.innerHTML = `<input type="checkbox"><strong></strong>`;
+      toggle.querySelector("strong").textContent = pond.name;
+      const quantities = document.createElement("div");
+      quantities.className = "apply-quantities";
+      quantities.hidden = true;
+      pendingFertilizerItems.forEach((item, index) => {
+        const label = document.createElement("label");
+        label.textContent = `${item.name}（${item.unit}）`;
+        const input = document.createElement("input");
+        input.className = "flow-input apply-quantity";
+        input.type = "number";
+        input.inputMode = "decimal";
+        input.min = "0.01";
+        input.step = "0.01";
+        input.value = item.quantity;
+        input.dataset.itemIndex = index;
+        label.append(input);
+        quantities.append(label);
+      });
+      card.append(toggle, quantities);
+      nodes.push(card);
+    });
+  });
+  list.replaceChildren(...nodes);
+  if (!nodes.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "目前沒有其他池子可以套用。";
+    list.append(empty);
+  }
+}
+
+document.querySelector("#applyFertilizerButton").addEventListener("click", () => {
+  const error = document.querySelector("#fertilizingRecordError");
+  const items = collectFertilizerItems(error);
+  if (!items) return;
+  pendingFertilizerItems = items;
+  document.querySelector("#applyFertilizerError").textContent = "";
+  renderApplyFertilizerPonds();
+  applyFertilizerDialog.showModal();
+});
+
+document.querySelector("#applyFertilizerPonds").addEventListener("change", (event) => {
+  if (event.target.type !== "checkbox") return;
+  event.target.closest(".apply-pond-card").querySelector(".apply-quantities").hidden = !event.target.checked;
+});
+
+applyFertilizerForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const error = document.querySelector("#applyFertilizerError");
+  const selectedCards = [...document.querySelectorAll("#applyFertilizerPonds .apply-pond-card")].filter((card) => card.querySelector('input[type="checkbox"]').checked);
+  if (!selectedCards.length) { error.textContent = "請至少選擇一個要套用的池子。"; return; }
+  const currentPond = farmData.ponds.find((pond) => pond.id === currentFertilizingPondId);
+  if (!currentPond) { error.textContent = "找不到目前的池子，請返回後再試一次。"; return; }
+  const now = new Date();
+  const notes = cleanName(fertilizingRecordForm.elements.notes.value);
+  const records = [fertilizingRecordFor(currentPond, pendingFertilizerItems, notes, now)];
+  for (const card of selectedCards) {
+    const pond = farmData.ponds.find((item) => String(item.id) === card.dataset.pondId);
+    if (!pond) continue;
+    const items = pendingFertilizerItems.map((item, index) => {
+      const quantity = Number(card.querySelector(`[data-item-index="${index}"]`).value);
+      return { ...item, quantity, amount: fertilizerAmount(quantity, item.unitPrice) };
+    });
+    if (items.some((item) => !Number.isFinite(item.quantity) || item.quantity <= 0)) { error.textContent = `請確認「${pond.name}」每項肥料的使用量。`; return; }
+    records.push(fertilizingRecordFor(pond, items, notes, now));
+  }
+  fertilizingData.records.push(...records);
+  try {
+    saveFertilizingData();
+    rememberNewFertilizers(pendingFertilizerItems);
+  } catch (_) {
+    fertilizingData.records.splice(-records.length, records.length);
+    try { saveFertilizingData(); } catch (_) {}
+    error.textContent = "目前無法儲存，請稍後再試。";
+    return;
+  }
+  applyFertilizerDialog.close();
+  showFertilizingPonds(currentFertilizingZoneId);
+});
+
 document.querySelector("#shrimpOtherHistory").addEventListener("click", (event) => {
   const button = event.target.closest(".custom-condition-button");
   if (!button) return;
@@ -1052,6 +1369,7 @@ document.querySelectorAll("[data-feature]").forEach((button) => button.addEventL
   const feature = button.dataset.feature;
   if (feature === "patrol") showShrimpPatrolZones();
   else if (feature === "feeding") showFeedingZones();
+  else if (feature === "additives") showFertilizingZones();
   else if (feature === "settings" || feature === "profile") showSettings();
   else showDevelopment();
 }));
@@ -1065,6 +1383,9 @@ document.addEventListener("click", (event) => {
   if (action === "back-shrimp-patrol-ponds") showShrimpPatrolPonds(currentShrimpPatrolZoneId);
   if (action === "open-feeding-zones") showFeedingZones();
   if (action === "back-feeding-ponds") showFeedingPonds(currentFeedingZoneId);
+  if (action === "open-fertilizing-zones") showFertilizingZones();
+  if (action === "back-fertilizing-ponds") showFertilizingPonds(currentFertilizingZoneId);
+  if (action === "close-apply-fertilizer") applyFertilizerDialog.close();
   if (action === "open-farm-editor") {
     document.querySelector("#settingsFarmName").value = farmData.farm?.name || "";
     document.querySelector("#settingsFarmError").textContent = "";
