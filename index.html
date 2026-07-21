@@ -99,6 +99,46 @@
     </nav>
   </div>
 
+  <div id="shrimpPatrolZoneView" class="view settings-view" hidden>
+    <header class="settings-header"><button class="back-button" type="button" data-home aria-label="返回首頁">&#8249;</button><div><p class="eyebrow">每日巡視</p><h1>巡蝦</h1></div></header>
+    <main class="settings-main feeding-main">
+      <p class="zone-help">請先選擇要巡蝦的區域。</p>
+      <div id="shrimpPatrolZoneList" class="settings-menu" aria-live="polite"></div>
+      <div id="shrimpPatrolZoneEmptyState" class="empty-state" hidden><p>目前還沒有區域，請先到設定建立區域與池子。</p></div>
+    </main>
+  </div>
+
+  <div id="shrimpPatrolPondView" class="view settings-view" hidden>
+    <header class="settings-header"><button class="back-button" type="button" data-action="open-shrimp-patrol-zones" aria-label="返回區域列表">&#8249;</button><div><p class="eyebrow">巡蝦</p><h1 id="shrimpPatrolZoneTitle">區域</h1></div></header>
+    <main class="settings-main feeding-main">
+      <div id="shrimpPatrolPondList" class="feeding-pond-list" role="list" aria-live="polite"></div>
+      <div id="shrimpPatrolPondEmptyState" class="empty-state" hidden><p>這個區域目前還沒有池子。</p></div>
+    </main>
+    <footer class="feeding-progress-bar" aria-live="polite">
+      <strong id="shrimpPatrolProgressText">已完成：0 / 0</strong>
+      <p id="shrimpPatrolAllComplete" hidden>🎉 今日巡蝦完成</p>
+    </footer>
+  </div>
+
+  <div id="shrimpPatrolRecordView" class="view settings-view" hidden>
+    <header class="settings-header"><button class="back-button" type="button" data-action="back-shrimp-patrol-ponds" aria-label="返回池子列表">&#8249;</button><div><p class="eyebrow">巡蝦紀錄</p><h1>巡蝦</h1></div></header>
+    <main class="settings-main feeding-record-main">
+      <section class="settings-card feeding-record-card">
+        <p class="feeding-pond-label">池名：<strong id="shrimpPatrolPondTitle">池子</strong></p>
+        <div class="record-meta"><span>日期：<strong id="shrimpPatrolDate">今天</strong></span><span>時間：<strong id="shrimpPatrolTime"></strong></span></div>
+        <form id="shrimpPatrolRecordForm" novalidate>
+          <fieldset class="patrol-option-section"><legend>1. 整體是否有異常？</legend><div class="patrol-option-grid"><label class="choice"><input type="radio" name="overall" value="normal"><span>正常</span></label><label class="choice"><input type="radio" name="overall" value="abnormal"><span>有異常</span></label></div></fieldset>
+          <fieldset class="patrol-option-section"><legend>2. 水色狀況</legend><div class="patrol-option-grid"><label class="choice"><input type="radio" name="waterColor" value="normal"><span>正常</span></label><label class="choice"><input type="radio" name="waterColor" value="dense"><span>太濃</span></label><label class="choice"><input type="radio" name="waterColor" value="light"><span>太淡</span></label><label class="choice"><input type="radio" name="waterColor" value="changed"><span>變色</span></label><label class="choice"><input type="radio" name="waterColor" value="other"><span>其他</span></label></div><label class="photo-field" for="shrimpPatrolPhoto"><span>水色照片（選填）</span><input id="shrimpPatrolPhoto" name="waterPhoto" type="file" accept="image/*"><small id="shrimpPatrolPhotoStatus">沒有選擇照片</small></label></fieldset>
+          <fieldset class="patrol-option-section"><legend>3. 水車與放水設備</legend><p class="option-subheading">水車</p><div class="patrol-option-grid"><label class="choice"><input type="radio" name="waterwheel" value="normal"><span>正常</span></label><label class="choice"><input type="radio" name="waterwheel" value="abnormal"><span>異常</span></label><label class="choice"><input type="radio" name="waterwheel" value="off"><span>未開</span></label></div><p class="option-subheading">放水設備</p><div class="patrol-option-grid"><label class="choice"><input type="radio" name="drainage" value="normal"><span>正常</span></label><label class="choice"><input type="radio" name="drainage" value="abnormal"><span>異常</span></label><label class="choice"><input type="radio" name="drainage" value="unused"><span>未使用</span></label></div></fieldset>
+          <fieldset class="patrol-option-section"><legend>4. 蝦子狀況（可複選）</legend><div class="patrol-option-grid"><label class="choice"><input type="checkbox" name="shrimpCondition" value="normal"><span>正常</span></label><label class="choice"><input type="checkbox" name="shrimpCondition" value="floating"><span>浮頭</span></label><label class="choice"><input type="checkbox" name="shrimpCondition" value="edge"><span>爬邊</span></label><label class="choice"><input type="checkbox" name="shrimpCondition" value="softShell"><span>軟殼</span></label><label class="choice"><input type="checkbox" name="shrimpCondition" value="mortality"><span>偷死</span></label><label class="choice"><input type="checkbox" name="shrimpCondition" value="lowActivity"><span>活動力差</span></label><label class="choice"><input type="checkbox" name="shrimpCondition" value="other"><span>其他</span></label></div></fieldset>
+          <label class="field-label" for="shrimpPatrolNotes">備註（選填）</label><textarea class="flow-input" id="shrimpPatrolNotes" name="notes" rows="3" maxlength="300" placeholder="記下需要留意的狀況"></textarea>
+          <p id="shrimpPatrolRecordError" class="form-error" role="alert"></p>
+          <button class="button button-primary button-block" type="submit">完成巡蝦</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
   <div id="feedingZoneView" class="view settings-view" hidden>
     <header class="settings-header"><button class="back-button" type="button" data-home aria-label="返回首頁">&#8249;</button><div><p class="eyebrow">每日紀錄</p><h1>餵蝦</h1></div></header>
     <main class="settings-main feeding-main">

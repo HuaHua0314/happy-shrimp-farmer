@@ -2,6 +2,7 @@ const STORAGE_KEY = "happyShrimpFarmer.v1";
 const ACCOUNT_KEY = "happyShrimpFarmer.account.v1";
 const FARM_KEY = "happyShrimpFarmer.farm.v1";
 const FEEDING_KEY = "happyShrimpFarmer.feeding.v1";
+const SHRIMP_PATROL_KEY = "happyShrimpFarmer.shrimpPatrol.v1";
 const TEST_CODE = "123456";
 const DEFAULT_PONDS = ["一號池", "二號池", "育苗池"];
 
@@ -21,6 +22,8 @@ let account = loadJson(ACCOUNT_KEY, { phone: "", isLoggedIn: false });
 let farmData = normalizeFarmData(loadJson(FARM_KEY, null));
 let feedingData = loadJson(FEEDING_KEY, { records: [] });
 if (!Array.isArray(feedingData.records)) feedingData = { records: [] };
+let shrimpPatrolData = loadJson(SHRIMP_PATROL_KEY, { records: [] });
+if (!Array.isArray(shrimpPatrolData.records)) shrimpPatrolData = { records: [] };
 let editingId = null;
 let pendingPhone = "";
 let onboardingStep = 1;
@@ -31,6 +34,8 @@ let editingFarmPondId = null;
 let draggedPondElement = null;
 let currentFeedingZoneId = null;
 let currentFeedingPondId = null;
+let currentShrimpPatrolZoneId = null;
+let currentShrimpPatrolPondId = null;
 
 const authView = document.querySelector("#authView");
 const onboardingView = document.querySelector("#onboardingView");
@@ -43,6 +48,9 @@ const pondZoneDetailView = document.querySelector("#pondZoneDetailView");
 const feedingZoneView = document.querySelector("#feedingZoneView");
 const feedingPondView = document.querySelector("#feedingPondView");
 const feedingRecordView = document.querySelector("#feedingRecordView");
+const shrimpPatrolZoneView = document.querySelector("#shrimpPatrolZoneView");
+const shrimpPatrolPondView = document.querySelector("#shrimpPatrolPondView");
+const shrimpPatrolRecordView = document.querySelector("#shrimpPatrolRecordView");
 const pondList = document.querySelector("#pondList");
 const emptyState = document.querySelector("#emptyState");
 const gridSelect = document.querySelector("#gridColumns");
@@ -57,6 +65,7 @@ const farmEditorDialog = document.querySelector("#farmEditorDialog");
 const pondEditorDialog = document.querySelector("#pondEditorDialog");
 const pondEditorForm = document.querySelector("#pondEditorForm");
 const feedingRecordForm = document.querySelector("#feedingRecordForm");
+const shrimpPatrolRecordForm = document.querySelector("#shrimpPatrolRecordForm");
 
 function localDateKey(date) {
   const year = date.getFullYear();
@@ -104,6 +113,7 @@ function savePatrolState() { saveJson(STORAGE_KEY, state); }
 function saveAccount() { saveJson(ACCOUNT_KEY, account); }
 function saveFarmData() { saveJson(FARM_KEY, farmData); }
 function saveFeedingData() { saveJson(FEEDING_KEY, feedingData); }
+function saveShrimpPatrolData() { saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData); }
 function createId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`; }
 function cleanName(value) { return String(value || "").trim().replace(/\s+/g, " "); }
 function sameName(a, b) { return cleanName(a).toLocaleLowerCase("zh-Hant") === cleanName(b).toLocaleLowerCase("zh-Hant"); }
@@ -137,7 +147,7 @@ function syncFarmPondsToPatrol() {
 }
 
 function hideAppViews() {
-  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView, feedingZoneView, feedingPondView, feedingRecordView].forEach((view) => { view.hidden = true; });
+  [authView, onboardingView, homeView, patrolView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView, feedingZoneView, feedingPondView, feedingRecordView, shrimpPatrolZoneView, shrimpPatrolPondView, shrimpPatrolRecordView].forEach((view) => { view.hidden = true; });
 }
 
 function routeApp() {
@@ -295,6 +305,133 @@ function render() {
 function showHome() { hideAppViews(); homeView.hidden = false; updateHomeView(); render(); window.scrollTo(0, 0); }
 function showPatrol() { hideAppViews(); patrolView.hidden = false; render(); window.scrollTo(0, 0); }
 function showDevelopment() { developmentDialog.showModal(); }
+
+function showShrimpPatrolZones() {
+  hideAppViews();
+  shrimpPatrolZoneView.hidden = false;
+  const zones = [...farmData.zones].sort((a, b) => a.order - b.order);
+  const list = document.querySelector("#shrimpPatrolZoneList");
+  list.replaceChildren(...zones.map((zone) => shrimpPatrolZoneItem(zone)));
+  document.querySelector("#shrimpPatrolZoneEmptyState").hidden = zones.length > 0;
+  window.scrollTo(0, 0);
+}
+
+function shrimpPatrolZoneItem(zone) {
+  const button = document.createElement("button");
+  button.className = "settings-menu-item";
+  button.type = "button";
+  const pondCount = farmData.ponds.filter((pond) => pond.zoneId === zone.id).length;
+  button.innerHTML = `<span><strong></strong><small>${pondCount} 個池子</small></span><b aria-hidden="true">›</b>`;
+  button.querySelector("strong").textContent = zone.name;
+  button.addEventListener("click", () => showShrimpPatrolPonds(zone.id));
+  return button;
+}
+
+function shrimpPatrolCompletedToday(pondId) {
+  return shrimpPatrolData.records.some((record) => record.pondId === pondId && record.date === todayKey);
+}
+
+function showShrimpPatrolPonds(zoneId) {
+  const zone = farmData.zones.find((item) => item.id === zoneId);
+  if (!zone) { showShrimpPatrolZones(); return; }
+  currentShrimpPatrolZoneId = zoneId;
+  hideAppViews();
+  shrimpPatrolPondView.hidden = false;
+  document.querySelector("#shrimpPatrolZoneTitle").textContent = zone.name;
+  renderShrimpPatrolPonds();
+  window.scrollTo(0, 0);
+}
+
+function renderShrimpPatrolPonds() {
+  const ponds = farmData.ponds.filter((pond) => pond.zoneId === currentShrimpPatrolZoneId).sort((a, b) => a.order - b.order);
+  const completedCount = ponds.filter((pond) => shrimpPatrolCompletedToday(pond.id)).length;
+  const list = document.querySelector("#shrimpPatrolPondList");
+  list.replaceChildren(...ponds.map((pond) => shrimpPatrolPondItem(pond)));
+  document.querySelector("#shrimpPatrolPondEmptyState").hidden = ponds.length > 0;
+  document.querySelector("#shrimpPatrolProgressText").textContent = `已完成：${completedCount} / ${ponds.length}`;
+  document.querySelector("#shrimpPatrolAllComplete").hidden = ponds.length === 0 || completedCount !== ponds.length;
+}
+
+function shrimpPatrolPondItem(pond) {
+  const completed = shrimpPatrolCompletedToday(pond.id);
+  const button = document.createElement("button");
+  button.className = `feeding-pond-item${completed ? " completed" : ""}`;
+  button.type = "button";
+  button.setAttribute("role", "listitem");
+  button.setAttribute("aria-label", `${pond.name}，今天${completed ? "已完成" : "尚未完成"}巡蝦`);
+  const name = document.createElement("strong");
+  if (completed) {
+    const check = document.createElement("span");
+    check.className = "feeding-completed-check";
+    check.textContent = "✓";
+    name.append(check, ` ${pond.name}`);
+  } else {
+    name.textContent = pond.name;
+  }
+  button.append(name);
+  button.addEventListener("click", () => showShrimpPatrolRecord(pond.id));
+  return button;
+}
+
+function setPatrolRadioValue(form, name, value) {
+  if (value) form.elements[name].value = value;
+}
+
+function showShrimpPatrolRecord(pondId) {
+  const pond = farmData.ponds.find((item) => item.id === pondId && item.zoneId === currentShrimpPatrolZoneId);
+  if (!pond) { showShrimpPatrolPonds(currentShrimpPatrolZoneId); return; }
+  currentShrimpPatrolPondId = pondId;
+  hideAppViews();
+  shrimpPatrolRecordView.hidden = false;
+  shrimpPatrolRecordForm.reset();
+  document.querySelector("#shrimpPatrolPondTitle").textContent = pond.name;
+  document.querySelector("#shrimpPatrolDate").textContent = "今天";
+  document.querySelector("#shrimpPatrolTime").textContent = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+  document.querySelector("#shrimpPatrolRecordError").textContent = "";
+  const photoStatus = document.querySelector("#shrimpPatrolPhotoStatus");
+  const existing = shrimpPatrolData.records.find((record) => record.pondId === pondId && record.date === todayKey);
+  photoStatus.textContent = existing?.waterPhoto ? "已保留今天的水色照片" : "沒有選擇照片";
+  if (existing) {
+    setPatrolRadioValue(shrimpPatrolRecordForm, "overall", existing.overall);
+    setPatrolRadioValue(shrimpPatrolRecordForm, "waterColor", existing.waterColor);
+    setPatrolRadioValue(shrimpPatrolRecordForm, "waterwheel", existing.waterwheel);
+    setPatrolRadioValue(shrimpPatrolRecordForm, "drainage", existing.drainage);
+    const conditions = Array.isArray(existing.shrimpConditions) ? existing.shrimpConditions : [];
+    shrimpPatrolRecordForm.querySelectorAll('[name="shrimpCondition"]').forEach((input) => { input.checked = conditions.includes(input.value); });
+    shrimpPatrolRecordForm.elements.notes.value = existing.notes || "";
+  }
+  window.scrollTo(0, 0);
+}
+
+function patrolPhotoDataUrl(file) {
+  if (!file) return Promise.resolve("");
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("無法讀取照片"));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("照片格式無法使用"));
+      image.onload = () => {
+        const scale = Math.min(1, 1280 / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function shrimpPatrolHasAbnormal(record) {
+  return record.overall === "abnormal"
+    || Boolean(record.waterColor && record.waterColor !== "normal")
+    || record.waterwheel === "abnormal"
+    || record.drainage === "abnormal"
+    || record.shrimpConditions.some((value) => value !== "normal");
+}
 
 function showFeedingZones() {
   hideAppViews();
@@ -667,6 +804,57 @@ pondEditorForm.addEventListener("submit", (event) => {
   renderZonePonds();
 });
 
+document.querySelector("#shrimpPatrolPhoto").addEventListener("change", (event) => {
+  const file = event.currentTarget.files?.[0];
+  document.querySelector("#shrimpPatrolPhotoStatus").textContent = file ? file.name : "沒有選擇照片";
+});
+
+shrimpPatrolRecordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const data = new FormData(event.currentTarget);
+  const now = new Date();
+  const existingIndex = shrimpPatrolData.records.findIndex((record) => record.pondId === currentShrimpPatrolPondId && record.date === todayKey);
+  const existing = existingIndex >= 0 ? shrimpPatrolData.records[existingIndex] : null;
+  const photoFile = event.currentTarget.elements.waterPhoto.files?.[0];
+  const error = document.querySelector("#shrimpPatrolRecordError");
+  let waterPhoto = existing?.waterPhoto || "";
+  try {
+    if (photoFile) waterPhoto = await patrolPhotoDataUrl(photoFile);
+  } catch (_) {
+    error.textContent = "這張照片目前無法使用，請換一張或不附照片。";
+    return;
+  }
+  const record = {
+    id: existing?.id || createId("shrimpPatrol"),
+    pondId: currentShrimpPatrolPondId,
+    zoneId: currentShrimpPatrolZoneId,
+    date: todayKey,
+    time: new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now),
+    overall: data.get("overall") || "",
+    waterColor: data.get("waterColor") || "",
+    waterwheel: data.get("waterwheel") || "",
+    drainage: data.get("drainage") || "",
+    shrimpConditions: data.getAll("shrimpCondition"),
+    notes: cleanName(data.get("notes")),
+    waterPhoto,
+    waterPhotoName: photoFile?.name || existing?.waterPhotoName || "",
+    updatedAt: now.toISOString()
+  };
+  record.hasAbnormal = shrimpPatrolHasAbnormal(record);
+  const records = [...shrimpPatrolData.records];
+  if (existingIndex >= 0) records[existingIndex] = record;
+  else records.push(record);
+  try {
+    saveJson(SHRIMP_PATROL_KEY, { records });
+  } catch (_) {
+    error.textContent = "儲存空間不足，請改用較小的照片或不附照片。";
+    return;
+  }
+  shrimpPatrolData = { records };
+  error.textContent = "";
+  showShrimpPatrolPonds(currentShrimpPatrolZoneId);
+});
+
 feedingRecordForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
@@ -834,7 +1022,7 @@ zonePondList.addEventListener("pointercancel", () => {
 
 document.querySelectorAll("[data-feature]").forEach((button) => button.addEventListener("click", () => {
   const feature = button.dataset.feature;
-  if (feature === "patrol") showPatrol();
+  if (feature === "patrol") showShrimpPatrolZones();
   else if (feature === "feeding") showFeedingZones();
   else if (feature === "settings" || feature === "profile") showSettings();
   else showDevelopment();
@@ -886,6 +1074,8 @@ document.addEventListener("click", (event) => {
   if (!action) return;
   if (action === "back-phone") showPhoneStep();
   if (action === "open-full-settings") showSettings();
+  if (action === "open-shrimp-patrol-zones") showShrimpPatrolZones();
+  if (action === "back-shrimp-patrol-ponds") showShrimpPatrolPonds(currentShrimpPatrolZoneId);
   if (action === "open-feeding-zones") showFeedingZones();
   if (action === "back-feeding-ponds") showFeedingPonds(currentFeedingZoneId);
   if (action === "open-farm-editor") {
