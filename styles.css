@@ -228,6 +228,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .apply-pond-toggle { display: flex; align-items: center; gap: 11px; min-height: 42px; font-size: 1.02rem; }
 .apply-pond-toggle input { width: 22px; height: 22px; accent-color: var(--red); }
 .apply-quantities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.harvest-record-main { width: min(620px, calc(100% - 32px)); padding-bottom: 42px; }
+.harvest-record-card { padding: 21px; }
+.harvest-items { display: grid; gap: 11px; margin-bottom: 18px; }
+.harvest-item { border: 1px solid var(--line); border-radius: 18px; padding: 14px; background: #fafafa; }
+.harvest-item h2 { margin: 0 0 11px; font-size: 1.12rem; }
+.harvest-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.harvest-field-grid label { display: grid; gap: 6px; color: var(--muted); font-size: .84rem; font-weight: 750; }
+.harvest-field-grid .flow-input { margin-bottom: 8px; color: var(--ink); }
+.harvest-item > p { margin: 2px 0 0; text-align: right; }
+.harvest-item input:disabled { border-color: #e4e1de; background: #eceae8; color: #aaa39d; }
+.harvest-item:has(input:disabled) { opacity: .58; }
+.harvest-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 18px 0; border-radius: 18px; padding: 16px; background: #fff3e7; text-align: center; }
+.harvest-summary p { margin: 0; font-weight: 750; }
+.harvest-summary strong { display: block; margin-top: 4px; color: var(--red-dark); font-size: 1.35rem; }
 .zone-fab { position: fixed; z-index: 15; right: max(22px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom)); display: grid; place-items: center; width: 62px; height: 62px; border: 0; border-radius: 50%; background: var(--red); color: white; box-shadow: 0 12px 30px rgba(232,72,67,.32); font-size: 2rem; line-height: 1; }
 @media (max-width: 600px) {
   .topbar { grid-template-columns: auto 1fr; } .topbar > .button { grid-column: 1 / -1; width: 100%; }

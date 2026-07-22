@@ -5,6 +5,16 @@ const FEEDING_KEY = "happyShrimpFarmer.feeding.v1";
 const SHRIMP_PATROL_KEY = "happyShrimpFarmer.shrimpPatrol.v1";
 const FERTILIZING_KEY = "happyShrimpFarmer.fertilizing.v1";
 const FERTILIZER_KEY = "happyShrimpFarmer.fertilizers.v1";
+const HARVEST_KEY = "happyShrimpFarmer.harvest.v1";
+const HARVEST_ITEMS = [
+  { id: "male", name: "公蝦", defaultPrice: 360 },
+  { id: "female", name: "母蝦", defaultPrice: 280 },
+  { id: "smallDish", name: "小菜", defaultPrice: 200 },
+  { id: "blackMale", name: "黑公", defaultPrice: 50 },
+  { id: "tiny", name: "小小", defaultPrice: 50 },
+  { id: "culled", name: "被淘汰", defaultPrice: 80 },
+  { id: "totalShrimp", name: "總蝦", defaultPrice: 200 }
+];
 const TEST_CODE = "123456";
 const DEFAULT_PONDS = ["一號池", "二號池", "育苗池"];
 
@@ -24,6 +34,9 @@ if (!Array.isArray(fertilizingData.records)) fertilizingData = { records: [] };
 let fertilizerData = loadJson(FERTILIZER_KEY, { items: [] });
 if (Array.isArray(fertilizerData)) fertilizerData = { items: fertilizerData };
 if (!Array.isArray(fertilizerData.items)) fertilizerData = { items: [] };
+let harvestData = loadJson(HARVEST_KEY, { records: [], prices: {} });
+if (!Array.isArray(harvestData.records)) harvestData.records = [];
+if (!harvestData.prices || typeof harvestData.prices !== "object") harvestData.prices = {};
 let pendingPhone = "";
 let onboardingStep = 1;
 let editingZoneId = null;
@@ -38,6 +51,8 @@ let currentShrimpPatrolPondId = null;
 let currentFertilizingZoneId = null;
 let currentFertilizingPondId = null;
 let pendingFertilizerItems = [];
+let currentHarvestZoneId = null;
+let currentHarvestPondId = null;
 
 const authView = document.querySelector("#authView");
 const onboardingView = document.querySelector("#onboardingView");
@@ -55,6 +70,9 @@ const shrimpPatrolRecordView = document.querySelector("#shrimpPatrolRecordView")
 const fertilizingZoneView = document.querySelector("#fertilizingZoneView");
 const fertilizingPondView = document.querySelector("#fertilizingPondView");
 const fertilizingRecordView = document.querySelector("#fertilizingRecordView");
+const harvestZoneView = document.querySelector("#harvestZoneView");
+const harvestPondView = document.querySelector("#harvestPondView");
+const harvestRecordView = document.querySelector("#harvestRecordView");
 const developmentDialog = document.querySelector("#developmentDialog");
 const zoneEditorDialog = document.querySelector("#zoneEditorDialog");
 const zoneEditorForm = document.querySelector("#zoneEditorForm");
@@ -66,6 +84,7 @@ const shrimpPatrolRecordForm = document.querySelector("#shrimpPatrolRecordForm")
 const fertilizingRecordForm = document.querySelector("#fertilizingRecordForm");
 const applyFertilizerDialog = document.querySelector("#applyFertilizerDialog");
 const applyFertilizerForm = document.querySelector("#applyFertilizerForm");
+const harvestRecordForm = document.querySelector("#harvestRecordForm");
 
 function localDateKey(date) {
   const year = date.getFullYear();
@@ -116,6 +135,7 @@ function saveFeedingData() { saveJson(FEEDING_KEY, feedingData); }
 function saveShrimpPatrolData() { saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData); }
 function saveFertilizingData() { saveJson(FERTILIZING_KEY, fertilizingData); }
 function saveFertilizerData() { saveJson(FERTILIZER_KEY, fertilizerData); }
+function saveHarvestData() { saveJson(HARVEST_KEY, harvestData); }
 function createId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`; }
 function cleanName(value) { return String(value || "").trim().replace(/\s+/g, " "); }
 function sameName(a, b) { return cleanName(a).toLocaleLowerCase("zh-Hant") === cleanName(b).toLocaleLowerCase("zh-Hant"); }
@@ -149,7 +169,7 @@ function syncFarmPondsToPatrol() {
 }
 
 function hideAppViews() {
-  [authView, onboardingView, homeView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView, feedingZoneView, feedingPondView, feedingRecordView, shrimpPatrolZoneView, shrimpPatrolPondView, shrimpPatrolRecordView, fertilizingZoneView, fertilizingPondView, fertilizingRecordView].forEach((view) => { view.hidden = true; });
+  [authView, onboardingView, homeView, settingsView, zoneManagementView, pondManagementView, pondZoneDetailView, feedingZoneView, feedingPondView, feedingRecordView, shrimpPatrolZoneView, shrimpPatrolPondView, shrimpPatrolRecordView, fertilizingZoneView, fertilizingPondView, fertilizingRecordView, harvestZoneView, harvestPondView, harvestRecordView].forEach((view) => { view.hidden = true; });
 }
 
 function routeApp() {
@@ -626,6 +646,133 @@ function rememberNewFertilizers(items) {
     saveJson(FERTILIZER_KEY, { items: nextItems });
     fertilizerData = { items: nextItems };
   }
+}
+
+function showHarvestZones() {
+  hideAppViews();
+  harvestZoneView.hidden = false;
+  const zones = [...farmData.zones].sort((a, b) => a.order - b.order);
+  const list = document.querySelector("#harvestZoneList");
+  list.replaceChildren(...zones.map((zone) => {
+    const button = document.createElement("button");
+    button.className = "settings-menu-item";
+    button.type = "button";
+    const count = farmData.ponds.filter((pond) => pond.zoneId === zone.id).length;
+    button.innerHTML = `<span><strong></strong><small>${count} 個池子</small></span><b aria-hidden="true">›</b>`;
+    button.querySelector("strong").textContent = zone.name;
+    button.addEventListener("click", () => showHarvestPonds(zone.id));
+    return button;
+  }));
+  document.querySelector("#harvestZoneEmptyState").hidden = zones.length > 0;
+  window.scrollTo(0, 0);
+}
+
+function harvestCompletedToday(pondId) {
+  return harvestData.records.some((record) => record.pondId === pondId && record.date === todayKey);
+}
+
+function showHarvestPonds(zoneId) {
+  const zone = farmData.zones.find((item) => item.id === zoneId);
+  if (!zone) { showHarvestZones(); return; }
+  currentHarvestZoneId = zoneId;
+  hideAppViews();
+  harvestPondView.hidden = false;
+  document.querySelector("#harvestZoneTitle").textContent = zone.name;
+  renderHarvestPonds();
+  window.scrollTo(0, 0);
+}
+
+function renderHarvestPonds() {
+  const ponds = farmData.ponds.filter((pond) => pond.zoneId === currentHarvestZoneId).sort((a, b) => a.order - b.order);
+  const completed = ponds.filter((pond) => harvestCompletedToday(pond.id)).length;
+  const list = document.querySelector("#harvestPondList");
+  list.replaceChildren(...ponds.map((pond) => {
+    const done = harvestCompletedToday(pond.id);
+    const button = document.createElement("button");
+    button.className = `feeding-pond-item${done ? " completed" : ""}`;
+    button.type = "button";
+    button.setAttribute("role", "listitem");
+    const name = document.createElement("strong");
+    if (done) {
+      const check = document.createElement("span");
+      check.className = "feeding-completed-check";
+      check.textContent = "✓";
+      name.append(check, ` ${pond.name}`);
+    } else name.textContent = pond.name;
+    button.append(name);
+    button.addEventListener("click", () => showHarvestRecord(pond.id));
+    return button;
+  }));
+  document.querySelector("#harvestPondEmptyState").hidden = ponds.length > 0;
+  document.querySelector("#harvestProgressText").textContent = `已完成：${completed} / ${ponds.length}`;
+  document.querySelector("#harvestAllComplete").hidden = ponds.length === 0 || completed !== ponds.length;
+}
+
+function harvestPrice(item) {
+  const remembered = Number(harvestData.prices[item.id]);
+  return Number.isFinite(remembered) && remembered >= 0 ? remembered : item.defaultPrice;
+}
+
+function renderHarvestItems() {
+  const list = document.querySelector("#harvestItems");
+  list.replaceChildren(...HARVEST_ITEMS.map((definition) => {
+    const item = document.createElement("article");
+    item.className = "harvest-item";
+    item.dataset.itemId = definition.id;
+    item.innerHTML = `<h2></h2><div class="harvest-field-grid"><label>重量（台斤）<input class="flow-input harvest-weight" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label><label>單價（元／台斤）<input class="flow-input harvest-price" type="number" inputmode="decimal" min="0" step="0.01"></label></div><p>小計：<strong class="harvest-subtotal">0</strong> 元</p>`;
+    item.querySelector("h2").textContent = definition.name;
+    item.querySelector(".harvest-price").value = harvestPrice(definition);
+    return item;
+  }));
+  updateHarvestTotals();
+}
+
+function harvestRowValues(row) {
+  const weight = Number(row.querySelector(".harvest-weight").value) || 0;
+  const price = Number(row.querySelector(".harvest-price").value) || 0;
+  return { weight, price, subtotal: Number((weight * price).toFixed(2)) };
+}
+
+function updateHarvestMode(changedWeight = null) {
+  const totalRow = document.querySelector('#harvestItems [data-item-id="totalShrimp"]');
+  const categoryRows = [...document.querySelectorAll('#harvestItems .harvest-item:not([data-item-id="totalShrimp"])')];
+  if (changedWeight && Number(changedWeight.value) > 0) {
+    const changedRow = changedWeight.closest(".harvest-item");
+    if (changedRow === totalRow) categoryRows.forEach((row) => { row.querySelector(".harvest-weight").value = ""; });
+    else totalRow.querySelector(".harvest-weight").value = "";
+  }
+  const hasTotal = Number(totalRow.querySelector(".harvest-weight").value) > 0;
+  const hasCategory = categoryRows.some((row) => Number(row.querySelector(".harvest-weight").value) > 0);
+  categoryRows.forEach((row) => row.querySelectorAll("input").forEach((input) => { input.disabled = hasTotal; }));
+  totalRow.querySelectorAll("input").forEach((input) => { input.disabled = hasCategory; });
+  updateHarvestTotals();
+}
+
+function updateHarvestTotals() {
+  let totalWeight = 0;
+  let totalIncome = 0;
+  document.querySelectorAll("#harvestItems .harvest-item").forEach((row) => {
+    const values = harvestRowValues(row);
+    row.querySelector(".harvest-subtotal").textContent = formatMoney(values.subtotal);
+    totalWeight += values.weight;
+    totalIncome += values.subtotal;
+  });
+  document.querySelector("#harvestTotalWeight").textContent = formatMoney(totalWeight);
+  document.querySelector("#harvestTotalIncome").textContent = formatMoney(totalIncome);
+}
+
+function showHarvestRecord(pondId) {
+  const pond = farmData.ponds.find((item) => item.id === pondId && item.zoneId === currentHarvestZoneId);
+  if (!pond) { showHarvestPonds(currentHarvestZoneId); return; }
+  currentHarvestPondId = pondId;
+  hideAppViews();
+  harvestRecordView.hidden = false;
+  harvestRecordForm.reset();
+  document.querySelector("#harvestPondTitle").textContent = pond.name;
+  document.querySelector("#harvestTime").textContent = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+  document.querySelector("#harvestRecordError").textContent = "";
+  renderHarvestItems();
+  window.scrollTo(0, 0);
 }
 
 function showFeedingZones() {
@@ -1154,6 +1301,55 @@ applyFertilizerForm.addEventListener("submit", (event) => {
   showFertilizingPonds(currentFertilizingZoneId);
 });
 
+document.querySelector("#harvestItems").addEventListener("input", (event) => {
+  if (event.target.matches(".harvest-weight")) updateHarvestMode(event.target);
+  else if (event.target.matches(".harvest-price")) updateHarvestTotals();
+});
+
+harvestRecordForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const error = document.querySelector("#harvestRecordError");
+  const pond = farmData.ponds.find((item) => item.id === currentHarvestPondId);
+  const zone = farmData.zones.find((item) => item.id === currentHarvestZoneId);
+  if (!pond || !zone) { error.textContent = "找不到目前的區域或池子，請返回後再試一次。"; return; }
+  const items = HARVEST_ITEMS.map((definition) => {
+    const row = document.querySelector(`#harvestItems [data-item-id="${definition.id}"]`);
+    const values = harvestRowValues(row);
+    return { id: definition.id, name: definition.name, weight: values.weight, unitPrice: values.price, subtotal: values.subtotal };
+  });
+  if (!items.some((item) => item.weight > 0)) { error.textContent = "請至少輸入一個品項的重量。"; return; }
+  if (items.some((item) => !Number.isFinite(item.unitPrice) || item.unitPrice < 0)) { error.textContent = "請確認每個品項的單價。"; return; }
+  const now = new Date();
+  const totalWeight = Number(items.reduce((sum, item) => sum + item.weight, 0).toFixed(2));
+  const totalIncome = Number(items.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2));
+  const record = {
+    id: createId("harvest"),
+    date: todayKey,
+    time: new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now),
+    zoneId: zone.id,
+    zoneName: zone.name,
+    pondId: pond.id,
+    pondName: pond.name,
+    items,
+    totalWeight,
+    totalIncome,
+    notes: cleanName(event.currentTarget.elements.notes.value),
+    createdAt: now.toISOString()
+  };
+  const prices = { ...harvestData.prices };
+  items.forEach((item) => { prices[item.id] = item.unitPrice; });
+  const nextData = { records: [...harvestData.records, record], prices };
+  try {
+    saveJson(HARVEST_KEY, nextData);
+  } catch (_) {
+    error.textContent = "目前無法儲存抓蝦紀錄，請稍後再試。";
+    return;
+  }
+  harvestData = nextData;
+  error.textContent = "";
+  showHarvestPonds(currentHarvestZoneId);
+});
+
 document.querySelector("#shrimpOtherHistory").addEventListener("click", (event) => {
   const button = event.target.closest(".custom-condition-button");
   if (!button) return;
@@ -1434,6 +1630,7 @@ document.querySelectorAll("[data-feature]").forEach((button) => button.addEventL
   if (feature === "patrol") showShrimpPatrolZones();
   else if (feature === "feeding") showFeedingZones();
   else if (feature === "additives") showFertilizingZones();
+  else if (feature === "harvest") showHarvestZones();
   else if (feature === "settings" || feature === "profile") showSettings();
   else showDevelopment();
 }));
@@ -1450,6 +1647,8 @@ document.addEventListener("click", (event) => {
   if (action === "open-fertilizing-zones") showFertilizingZones();
   if (action === "back-fertilizing-ponds") showFertilizingPonds(currentFertilizingZoneId);
   if (action === "close-apply-fertilizer") applyFertilizerDialog.close();
+  if (action === "open-harvest-zones") showHarvestZones();
+  if (action === "back-harvest-ponds") showHarvestPonds(currentHarvestZoneId);
   if (action === "open-farm-editor") {
     document.querySelector("#settingsFarmName").value = farmData.farm?.name || "";
     document.querySelector("#settingsFarmError").textContent = "";

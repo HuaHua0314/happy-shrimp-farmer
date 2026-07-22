@@ -172,6 +172,22 @@
 
   <dialog id="applyFertilizerDialog" class="dialog apply-fertilizer-dialog"><form id="applyFertilizerForm" method="dialog" novalidate><div class="dialog-heading"><div><p class="eyebrow">批次建立紀錄</p><h2>套用到其他池</h2></div><button class="icon-button" type="button" data-action="close-apply-fertilizer" aria-label="關閉">&times;</button></div><p class="field-hint apply-hint">勾選池子後，可分別調整每項肥料的使用量。</p><div id="applyFertilizerPonds" class="apply-fertilizer-ponds"></div><p id="applyFertilizerError" class="form-error" role="alert"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-apply-fertilizer">取消</button><button class="button button-primary" type="submit">確認套用</button></div></form></dialog>
 
+  <div id="harvestZoneView" class="view settings-view" hidden>
+    <header class="settings-header"><button class="back-button" type="button" data-home aria-label="返回首頁">&#8249;</button><div><p class="eyebrow">收入紀錄</p><h1>抓蝦</h1></div></header>
+    <main class="settings-main feeding-main"><p class="zone-help">請先選擇抓蝦的區域。</p><div id="harvestZoneList" class="settings-menu" aria-live="polite"></div><div id="harvestZoneEmptyState" class="empty-state" hidden><p>目前還沒有區域，請先到設定建立區域與池子。</p></div></main>
+  </div>
+
+  <div id="harvestPondView" class="view settings-view" hidden>
+    <header class="settings-header"><button class="back-button" type="button" data-action="open-harvest-zones" aria-label="返回區域列表">&#8249;</button><div><p class="eyebrow">抓蝦</p><h1 id="harvestZoneTitle">區域</h1></div></header>
+    <main class="settings-main feeding-main"><div id="harvestPondList" class="feeding-pond-list" role="list" aria-live="polite"></div><div id="harvestPondEmptyState" class="empty-state" hidden><p>這個區域目前還沒有池子。</p></div></main>
+    <footer class="feeding-progress-bar" aria-live="polite"><strong id="harvestProgressText">已完成：0 / 0</strong><p id="harvestAllComplete" hidden>🎉 今日抓蝦完成</p></footer>
+  </div>
+
+  <div id="harvestRecordView" class="view settings-view" hidden>
+    <header class="settings-header"><button class="back-button" type="button" data-action="back-harvest-ponds" aria-label="返回池子列表">&#8249;</button><div><p class="eyebrow">抓蝦紀錄</p><h1>抓蝦</h1></div></header>
+    <main class="settings-main harvest-record-main"><section class="settings-card harvest-record-card"><p class="feeding-pond-label">池名：<strong id="harvestPondTitle">池子</strong></p><div class="record-meta"><span>日期：<strong>今天</strong></span><span>時間：<strong id="harvestTime"></strong></span></div><form id="harvestRecordForm" novalidate><div id="harvestItems" class="harvest-items"></div><div class="harvest-summary" aria-live="polite"><p>總重量：<strong id="harvestTotalWeight">0</strong> 台斤</p><p>總收入：<strong id="harvestTotalIncome">0</strong> 元</p></div><label class="field-label" for="harvestNotes">備註（選填）</label><textarea class="flow-input" id="harvestNotes" name="notes" rows="3" maxlength="300"></textarea><p id="harvestRecordError" class="form-error" role="alert"></p><button class="button button-primary button-block" type="submit">完成抓蝦</button></form></section></main>
+  </div>
+
   <div id="feedingPondView" class="view settings-view" hidden>
     <header class="settings-header"><button class="back-button" type="button" data-action="open-feeding-zones" aria-label="返回區域列表">&#8249;</button><div><p class="eyebrow">餵蝦</p><h1 id="feedingZoneTitle">區域</h1></div></header>
     <main class="settings-main feeding-main">
