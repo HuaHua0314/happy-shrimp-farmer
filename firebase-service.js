@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { collection, doc, getDoc, getDocs, getFirestore, query, serverTimestamp, setDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, query, serverTimestamp, setDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const COLLECTIONS = {
@@ -43,7 +43,7 @@ async function claimPhoneInvitation(user) {
   const invitation = invitations.docs.find((item) => item.data().status === "pending");
   if (!invitation) return "";
   const data = invitation.data();
-  await setDoc(doc(db, "farms", data.farmId, "members", user.uid), { uid: user.uid, phone: user.phoneNumber, name: user.phoneNumber, role: data.role || "member", status: "active", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  await setDoc(doc(db, "farms", data.farmId, "members", user.uid), { uid: user.uid, phone: user.phoneNumber, name: user.phoneNumber, role: data.role || "member", status: "active", inviteId: invitation.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   await setDoc(invitation.ref, { status: "accepted", acceptedBy: user.uid, acceptedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
   return data.farmId;
 }
@@ -109,6 +109,16 @@ export const firebaseService = {
     const rows = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     return { farm: farmSnap.exists() ? { id: farmId, ...farmSnap.data() } : null, zones: rows(zonesSnap), ponds: rows(pondsSnap), feedingRecords: rows(feedingSnap), patrolRecords: rows(patrolSnap), fertilizingRecords: rows(fertilizingSnap), harvestRecords: rows(harvestSnap), fertilizers: rows(fertilizersSnap) };
   },
+  async completeInitialImport(farmId) {
+    requireConfigured();
+    const user = await currentUser();
+    if (!user) throw new Error("請先登入 Firebase。");
+    await setDoc(doc(db, "farms", farmId), {
+      localStorageImportedAt: serverTimestamp(),
+      localStorageImportedBy: user.uid,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  },
   async syncFarmStructure(farmId, farm, zones, ponds) {
     requireConfigured();
     const user = await currentUser();
@@ -129,6 +139,16 @@ export const firebaseService = {
       batch.set(doc(db, "farms", farmId, COLLECTIONS[type], id), { ...record, farmId, creator: record.creator || creator(user, displayName), createdAt: record.createdAt || serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
     });
     await batch.commit();
+  },
+  async deleteRecord(farmId, type, recordId) {
+    requireConfigured();
+    if (!COLLECTIONS[type]) throw new Error("不支援的資料類型。");
+    await deleteDoc(doc(db, "farms", farmId, COLLECTIONS[type], String(recordId)));
+  },
+  async deleteStructureItem(farmId, type, itemId) {
+    requireConfigured();
+    if (!['zones', 'ponds', 'fertilizers'].includes(type)) throw new Error("不支援的資料類型。");
+    await deleteDoc(doc(db, "farms", farmId, type, String(itemId)));
   },
   async addMember(farmId, member) {
     requireConfigured();

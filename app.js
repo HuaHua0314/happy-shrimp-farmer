@@ -6,6 +6,7 @@ const SHRIMP_PATROL_KEY = "happyShrimpFarmer.shrimpPatrol.v1";
 const FERTILIZING_KEY = "happyShrimpFarmer.fertilizing.v1";
 const FERTILIZER_KEY = "happyShrimpFarmer.fertilizers.v1";
 const HARVEST_KEY = "happyShrimpFarmer.harvest.v1";
+const FIREBASE_PENDING_KEY = "happyShrimpFarmer.firebasePending.v1";
 const HARVEST_ITEMS = [
   { id: "male", name: "公蝦", defaultPrice: 360 },
   { id: "female", name: "母蝦", defaultPrice: 280 },
@@ -55,6 +56,7 @@ let currentHarvestZoneId = null;
 let currentHarvestPondId = null;
 let activeFarmId = "";
 let firebaseUser = null;
+let firebaseSyncQueue = Promise.resolve();
 
 const authView = document.querySelector("#authView");
 const onboardingView = document.querySelector("#onboardingView");
@@ -132,18 +134,43 @@ function normalizeFarmData(saved) {
 
 function savePatrolState() { saveJson(STORAGE_KEY, state); }
 function saveAccount() { saveJson(ACCOUNT_KEY, account); }
+function pendingFirebaseTypes() {
+  const value = loadJson(FIREBASE_PENDING_KEY, []);
+  return Array.isArray(value) ? value : [];
+}
+
+function markFirebasePending(type) {
+  saveJson(FIREBASE_PENDING_KEY, [...new Set([...pendingFirebaseTypes(), type])]);
+}
+
+function clearFirebasePending(type) {
+  saveJson(FIREBASE_PENDING_KEY, pendingFirebaseTypes().filter((item) => item !== type));
+}
+
+async function syncFirebaseType(service, type) {
+  if (!service?.configured || !firebaseUser) return false;
+  if (!activeFarmId && farmData.farm) activeFarmId = await service.ensureFarm(farmData.farm) || "";
+  if (!activeFarmId) return false;
+  if (type === "farm") await service.syncFarmStructure(activeFarmId, farmData.farm, farmData.zones, farmData.ponds);
+  else if (type === "feeding") await service.syncRecords(activeFarmId, "feeding", feedingData.records);
+  else if (type === "patrol") await service.syncRecords(activeFarmId, "patrol", shrimpPatrolData.records);
+  else if (type === "fertilizing") await service.syncRecords(activeFarmId, "fertilizing", fertilizingData.records);
+  else if (type === "fertilizers") await service.syncRecords(activeFarmId, "fertilizers", fertilizerData.items);
+  else if (type === "harvest") await service.syncRecords(activeFarmId, "harvest", harvestData.records);
+  else return false;
+  clearFirebasePending(type);
+  return true;
+}
+
 function queueFirebaseSync(type) {
-  firebaseServicePromise.then(async (service) => {
-    if (!service?.configured || !firebaseUser) return;
-    if (!activeFarmId && farmData.farm) activeFarmId = await service.ensureFarm(farmData.farm) || "";
-    if (!activeFarmId) return;
-    if (type === "farm") await service.syncFarmStructure(activeFarmId, farmData.farm, farmData.zones, farmData.ponds);
-    if (type === "feeding") await service.syncRecords(activeFarmId, "feeding", feedingData.records);
-    if (type === "patrol") await service.syncRecords(activeFarmId, "patrol", shrimpPatrolData.records);
-    if (type === "fertilizing") await service.syncRecords(activeFarmId, "fertilizing", fertilizingData.records);
-    if (type === "fertilizers") await service.syncRecords(activeFarmId, "fertilizers", fertilizerData.items);
-    if (type === "harvest") await service.syncRecords(activeFarmId, "harvest", harvestData.records);
-  }).catch((error) => console.error("Firebase sync failed", error));
+  markFirebasePending(type);
+  firebaseSyncQueue = firebaseSyncQueue
+    .then(async () => syncFirebaseType(await firebaseServicePromise, type))
+    .catch((error) => console.error("Firebase sync failed", error));
+}
+
+async function flushPendingFirebaseSync(service) {
+  for (const type of pendingFirebaseTypes()) await syncFirebaseType(service, type);
 }
 
 function saveFarmData() { saveJson(FARM_KEY, farmData); queueFirebaseSync("farm"); }
@@ -212,30 +239,38 @@ function localPhoneFromFirebase(phone) {
 
 async function loadOrMigrateFirebaseFarm(service, farmId) {
   const cloud = await service.loadFarm(farmId);
-  const hasCloudStructure = cloud.zones.length > 0 || cloud.ponds.length > 0;
-  if (hasCloudStructure) {
-    farmData = normalizeFarmData({ farm: cloud.farm ? { id: farmId, name: cloud.farm.name } : farmData.farm, zones: cloud.zones, ponds: cloud.ponds, onboardingCompleted: cloud.zones.length > 0 && cloud.ponds.length > 0 });
-    saveJson(FARM_KEY, farmData);
-  } else if (farmData.zones.length || farmData.ponds.length) {
+  const imported = Boolean(cloud.farm?.localStorageImportedAt);
+  const hasCloudData = cloud.zones.length > 0 || cloud.ponds.length > 0 || cloud.feedingRecords.length > 0 || cloud.patrolRecords.length > 0 || cloud.fertilizingRecords.length > 0 || cloud.harvestRecords.length > 0 || cloud.fertilizers.length > 0;
+
+  if (!imported && !hasCloudData) {
     await service.syncFarmStructure(farmId, farmData.farm, farmData.zones, farmData.ponds);
+    await service.syncRecords(farmId, "feeding", feedingData.records);
+    await service.syncRecords(farmId, "patrol", shrimpPatrolData.records);
+    await service.syncRecords(farmId, "fertilizing", fertilizingData.records);
+    await service.syncRecords(farmId, "harvest", harvestData.records);
+    await service.syncRecords(farmId, "fertilizers", fertilizerData.items);
+    await service.completeInitialImport(farmId);
+    return;
   }
-  const syncRecords = async (cloudRecords, localRecords, type, apply) => {
-    if (cloudRecords.length) apply(cloudRecords);
-    else if (localRecords.length) await service.syncRecords(farmId, type, localRecords);
-  };
-  await syncRecords(cloud.feedingRecords, feedingData.records, "feeding", (records) => { feedingData = { records }; saveJson(FEEDING_KEY, feedingData); });
-  await syncRecords(cloud.patrolRecords, shrimpPatrolData.records, "patrol", (records) => { shrimpPatrolData = { records, customConditions: [...new Set(records.flatMap((record) => record.customConditions || [record.shrimpOther]).filter(Boolean))] }; saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData); });
-  await syncRecords(cloud.fertilizingRecords, fertilizingData.records, "fertilizing", (records) => { fertilizingData = { records }; saveJson(FERTILIZING_KEY, fertilizingData); });
-  await syncRecords(cloud.harvestRecords, harvestData.records, "harvest", (records) => {
+
+  if (!imported) await service.completeInitialImport(farmId);
+  farmData = normalizeFarmData({ farm: cloud.farm ? { id: farmId, name: cloud.farm.name } : null, zones: cloud.zones, ponds: cloud.ponds, onboardingCompleted: cloud.zones.length > 0 && cloud.ponds.length > 0 });
+  saveJson(FARM_KEY, farmData);
+  feedingData = { records: cloud.feedingRecords };
+  saveJson(FEEDING_KEY, feedingData);
+  shrimpPatrolData = { records: cloud.patrolRecords, customConditions: [...new Set(cloud.patrolRecords.flatMap((record) => record.customConditions || [record.shrimpOther]).filter(Boolean))] };
+  saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData);
+  fertilizingData = { records: cloud.fertilizingRecords };
+  saveJson(FERTILIZING_KEY, fertilizingData);
+  {
+    const records = cloud.harvestRecords;
     const prices = { ...harvestData.prices };
     [...records].sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || ""))).forEach((record) => record.items?.forEach((item) => { prices[item.id] = item.unitPrice; }));
     harvestData = { records, prices };
     saveJson(HARVEST_KEY, harvestData);
-  });
-  if (cloud.fertilizers.length) {
-    fertilizerData = { items: cloud.fertilizers };
-    saveJson(FERTILIZER_KEY, fertilizerData);
-  } else if (fertilizerData.items.length) await service.syncRecords(farmId, "fertilizers", fertilizerData.items);
+  }
+  fertilizerData = { items: cloud.fertilizers };
+  saveJson(FERTILIZER_KEY, fertilizerData);
 }
 
 async function initializeFirebaseApp() {
@@ -259,13 +294,25 @@ async function initializeFirebaseApp() {
     saveAccount();
     try {
       activeFarmId = await service.ensureFarm(farmData.farm) || "";
-      if (activeFarmId) await loadOrMigrateFirebaseFarm(service, activeFarmId);
+      if (activeFarmId) {
+        await flushPendingFirebaseSync(service);
+        await loadOrMigrateFirebaseFarm(service, activeFarmId);
+      }
     } catch (error) {
       console.error("Firebase initial sync failed", error);
     }
     routeApp();
   });
 }
+
+window.addEventListener("online", () => {
+  firebaseSyncQueue = firebaseSyncQueue
+    .then(async () => {
+      const service = await firebaseServicePromise;
+      if (service?.configured && firebaseUser && activeFarmId) await flushPendingFirebaseSync(service);
+    })
+    .catch((error) => console.error("Firebase reconnect sync failed", error));
+});
 
 function showPhoneStep() {
   document.querySelector("#phoneStep").hidden = false;
