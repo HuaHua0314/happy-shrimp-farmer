@@ -21,14 +21,15 @@
             <label class="field-label" for="loginPhone">手機號碼</label>
             <input class="flow-input" id="loginPhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="0912345678" required>
             <p id="phoneError" class="form-error" role="alert"></p>
-            <button class="button button-primary button-block" type="submit">取得驗證碼</button>
+            <button id="sendCodeButton" class="button button-primary button-block" type="submit">取得驗證碼</button>
+            <div id="recaptcha-container"></div>
           </form>
         </div>
         <div id="codeStep" hidden>
           <p class="flow-eyebrow">手機驗證</p>
           <h1>輸入驗證碼</h1>
           <p id="phonePreview" class="flow-copy"></p>
-          <p class="test-code-note">測試期間請輸入 <strong>123456</strong></p>
+          <p class="test-code-note">請輸入手機簡訊收到的 6 碼驗證碼。</p>
           <form id="codeForm" novalidate>
             <label class="field-label" for="loginCode">6 碼驗證碼</label>
             <input class="flow-input code-input" id="loginCode" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required>
@@ -270,6 +271,6 @@
   <dialog id="zoneEditorDialog" class="dialog dialog-small"><form id="zoneEditorForm" method="dialog" novalidate><div class="dialog-heading"><div><p class="eyebrow">農場區域</p><h2 id="zoneEditorTitle">新增區域</h2></div><button class="icon-button" type="button" data-action="close-zone-editor" aria-label="關閉">&times;</button></div><label class="field-label" for="zoneEditorName">區域名稱</label><input class="flow-input" id="zoneEditorName" name="zoneName" maxlength="30" placeholder="例如：水尾區" required><p id="zoneEditorError" class="form-error" role="alert"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-zone-editor">取消</button><button id="zoneEditorSubmit" class="button button-primary" type="submit">新增</button></div></form></dialog>
   <dialog id="farmEditorDialog" class="dialog dialog-small"><form id="settingsFarmForm" method="dialog" novalidate><div class="dialog-heading"><div><p class="eyebrow">農場設定</p><h2>修改農場名稱</h2></div><button class="icon-button" type="button" data-action="close-farm-editor" aria-label="關閉">&times;</button></div><label class="field-label" for="settingsFarmName">農場名稱</label><input class="flow-input" id="settingsFarmName" name="farmName" maxlength="30" required><p id="settingsFarmError" class="form-error" role="alert"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-farm-editor">取消</button><button class="button button-primary" type="submit">儲存</button></div></form></dialog>
   <dialog id="pondEditorDialog" class="dialog dialog-small"><form id="pondEditorForm" method="dialog" novalidate><div class="dialog-heading"><div><p class="eyebrow">區域池子</p><h2 id="pondEditorTitle">新增池子</h2></div><button class="icon-button" type="button" data-action="close-pond-editor" aria-label="關閉">&times;</button></div><label class="field-label" for="pondEditorName">池子名稱</label><input class="flow-input" id="pondEditorName" name="pondName" maxlength="30" placeholder="例如：水尾1池" required><label class="field-label" for="pondEditorStatus">池子狀態</label><select class="flow-input" id="pondEditorStatus" name="status"><option value="active">使用中</option><option value="rest">休息</option></select><p id="pondEditorError" class="form-error" role="alert"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-pond-editor">取消</button><button id="pondEditorSubmit" class="button button-primary" type="submit">新增</button></div></form></dialog>
-  <script src="app.js?v=task8-harvest"></script>
+  <script src="app.js?v=firebase-multiplayer-v1"></script>
 </body>
 </html>

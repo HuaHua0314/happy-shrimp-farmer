@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function member(farmId) { return signedIn() && exists(/databases/$(database)/documents/farms/$(farmId)/members/$(request.auth.uid)); }
+    function role(farmId) { return get(/databases/$(database)/documents/farms/$(farmId)/members/$(request.auth.uid)).data.role; }
+    function manager(farmId) { return member(farmId) && role(farmId) in ['owner', 'admin']; }
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+    match /farms/{farmId} {
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read: if member(farmId);
+      allow update: if manager(farmId);
+      allow delete: if member(farmId) && role(farmId) == 'owner';
+
+      match /members/{uid} {
+        allow read: if member(farmId);
+        allow create: if manager(farmId)
+          || (request.auth.uid == uid && get(/databases/$(database)/documents/farms/$(farmId)).data.ownerId == uid)
+          || (request.auth.uid == uid && exists(/databases/$(database)/documents/farmInvites/$(farmId)_$(request.auth.token.phone_number)));
+        allow update: if manager(farmId) || request.auth.uid == uid;
+        allow delete: if manager(farmId) && uid != get(/databases/$(database)/documents/farms/$(farmId)).data.ownerId;
+      }
+      match /{structure}/{documentId} {
+        allow read: if member(farmId);
+        allow create, update, delete: if manager(farmId) && structure in ['zones', 'ponds', 'fertilizers'];
+      }
+      match /{records}/{documentId} {
+        allow read, create, update: if records in ['feedingRecords', 'patrolRecords', 'fertilizingRecords', 'harvestRecords'] && member(farmId);
+        allow delete: if records in ['feedingRecords', 'patrolRecords', 'fertilizingRecords', 'harvestRecords'] && manager(farmId);
+      }
+    }
+    match /farmInvites/{inviteId} {
+      allow create: if signedIn() && manager(request.resource.data.farmId);
+      allow read: if signedIn() && (resource.data.phone == request.auth.token.phone_number || manager(resource.data.farmId));
+      allow update: if signedIn() && (resource.data.phone == request.auth.token.phone_number || manager(resource.data.farmId));
+      allow delete: if signedIn() && manager(resource.data.farmId);
+    }
+  }
+}

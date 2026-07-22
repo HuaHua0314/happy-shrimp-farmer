@@ -15,7 +15,7 @@ const HARVEST_ITEMS = [
   { id: "culled", name: "被淘汰", defaultPrice: 80 },
   { id: "totalShrimp", name: "總蝦", defaultPrice: 200 }
 ];
-const TEST_CODE = "123456";
+const firebaseServicePromise = import("./firebase-service.js").then((module) => module.firebaseService).catch(() => null);
 const DEFAULT_PONDS = ["一號池", "二號池", "育苗池"];
 
 const todayKey = localDateKey(new Date());
@@ -53,6 +53,8 @@ let currentFertilizingPondId = null;
 let pendingFertilizerItems = [];
 let currentHarvestZoneId = null;
 let currentHarvestPondId = null;
+let activeFarmId = "";
+let firebaseUser = null;
 
 const authView = document.querySelector("#authView");
 const onboardingView = document.querySelector("#onboardingView");
@@ -130,12 +132,26 @@ function normalizeFarmData(saved) {
 
 function savePatrolState() { saveJson(STORAGE_KEY, state); }
 function saveAccount() { saveJson(ACCOUNT_KEY, account); }
-function saveFarmData() { saveJson(FARM_KEY, farmData); }
-function saveFeedingData() { saveJson(FEEDING_KEY, feedingData); }
-function saveShrimpPatrolData() { saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData); }
-function saveFertilizingData() { saveJson(FERTILIZING_KEY, fertilizingData); }
-function saveFertilizerData() { saveJson(FERTILIZER_KEY, fertilizerData); }
-function saveHarvestData() { saveJson(HARVEST_KEY, harvestData); }
+function queueFirebaseSync(type) {
+  firebaseServicePromise.then(async (service) => {
+    if (!service?.configured || !firebaseUser) return;
+    if (!activeFarmId && farmData.farm) activeFarmId = await service.ensureFarm(farmData.farm) || "";
+    if (!activeFarmId) return;
+    if (type === "farm") await service.syncFarmStructure(activeFarmId, farmData.farm, farmData.zones, farmData.ponds);
+    if (type === "feeding") await service.syncRecords(activeFarmId, "feeding", feedingData.records);
+    if (type === "patrol") await service.syncRecords(activeFarmId, "patrol", shrimpPatrolData.records);
+    if (type === "fertilizing") await service.syncRecords(activeFarmId, "fertilizing", fertilizingData.records);
+    if (type === "fertilizers") await service.syncRecords(activeFarmId, "fertilizers", fertilizerData.items);
+    if (type === "harvest") await service.syncRecords(activeFarmId, "harvest", harvestData.records);
+  }).catch((error) => console.error("Firebase sync failed", error));
+}
+
+function saveFarmData() { saveJson(FARM_KEY, farmData); queueFirebaseSync("farm"); }
+function saveFeedingData() { saveJson(FEEDING_KEY, feedingData); queueFirebaseSync("feeding"); }
+function saveShrimpPatrolData() { saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData); queueFirebaseSync("patrol"); }
+function saveFertilizingData() { saveJson(FERTILIZING_KEY, fertilizingData); queueFirebaseSync("fertilizing"); }
+function saveFertilizerData() { saveJson(FERTILIZER_KEY, fertilizerData); queueFirebaseSync("fertilizers"); }
+function saveHarvestData() { saveJson(HARVEST_KEY, harvestData); queueFirebaseSync("harvest"); }
 function createId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`; }
 function cleanName(value) { return String(value || "").trim().replace(/\s+/g, " "); }
 function sameName(a, b) { return cleanName(a).toLocaleLowerCase("zh-Hant") === cleanName(b).toLocaleLowerCase("zh-Hant"); }
@@ -187,6 +203,68 @@ function routeApp() {
   syncFarmPondsToPatrol();
   homeView.hidden = false;
   updateHomeView();
+}
+
+function localPhoneFromFirebase(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits.startsWith("886") ? `0${digits.slice(3)}` : digits;
+}
+
+async function loadOrMigrateFirebaseFarm(service, farmId) {
+  const cloud = await service.loadFarm(farmId);
+  const hasCloudStructure = cloud.zones.length > 0 || cloud.ponds.length > 0;
+  if (hasCloudStructure) {
+    farmData = normalizeFarmData({ farm: cloud.farm ? { id: farmId, name: cloud.farm.name } : farmData.farm, zones: cloud.zones, ponds: cloud.ponds, onboardingCompleted: cloud.zones.length > 0 && cloud.ponds.length > 0 });
+    saveJson(FARM_KEY, farmData);
+  } else if (farmData.zones.length || farmData.ponds.length) {
+    await service.syncFarmStructure(farmId, farmData.farm, farmData.zones, farmData.ponds);
+  }
+  const syncRecords = async (cloudRecords, localRecords, type, apply) => {
+    if (cloudRecords.length) apply(cloudRecords);
+    else if (localRecords.length) await service.syncRecords(farmId, type, localRecords);
+  };
+  await syncRecords(cloud.feedingRecords, feedingData.records, "feeding", (records) => { feedingData = { records }; saveJson(FEEDING_KEY, feedingData); });
+  await syncRecords(cloud.patrolRecords, shrimpPatrolData.records, "patrol", (records) => { shrimpPatrolData = { records, customConditions: [...new Set(records.flatMap((record) => record.customConditions || [record.shrimpOther]).filter(Boolean))] }; saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData); });
+  await syncRecords(cloud.fertilizingRecords, fertilizingData.records, "fertilizing", (records) => { fertilizingData = { records }; saveJson(FERTILIZING_KEY, fertilizingData); });
+  await syncRecords(cloud.harvestRecords, harvestData.records, "harvest", (records) => {
+    const prices = { ...harvestData.prices };
+    [...records].sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || ""))).forEach((record) => record.items?.forEach((item) => { prices[item.id] = item.unitPrice; }));
+    harvestData = { records, prices };
+    saveJson(HARVEST_KEY, harvestData);
+  });
+  if (cloud.fertilizers.length) {
+    fertilizerData = { items: cloud.fertilizers };
+    saveJson(FERTILIZER_KEY, fertilizerData);
+  } else if (fertilizerData.items.length) await service.syncRecords(farmId, "fertilizers", fertilizerData.items);
+}
+
+async function initializeFirebaseApp() {
+  const service = await firebaseServicePromise;
+  if (!service?.configured) {
+    account = { phone: "", isLoggedIn: false };
+    routeApp();
+    document.querySelector("#phoneError").textContent = "Firebase 尚未設定，請先完成 firebase-config.js。";
+    return;
+  }
+  service.onAuthChanged(async (user) => {
+    firebaseUser = user;
+    if (!user) {
+      account = { phone: "", isLoggedIn: false };
+      saveAccount();
+      activeFarmId = "";
+      routeApp();
+      return;
+    }
+    account = { phone: localPhoneFromFirebase(user.phoneNumber), isLoggedIn: true, uid: user.uid };
+    saveAccount();
+    try {
+      activeFarmId = await service.ensureFarm(farmData.farm) || "";
+      if (activeFarmId) await loadOrMigrateFirebaseFarm(service, activeFarmId);
+    } catch (error) {
+      console.error("Firebase initial sync failed", error);
+    }
+    routeApp();
+  });
 }
 
 function showPhoneStep() {
@@ -645,6 +723,7 @@ function rememberNewFertilizers(items) {
   if (nextItems.length !== fertilizerData.items.length) {
     saveJson(FERTILIZER_KEY, { items: nextItems });
     fertilizerData = { items: nextItems };
+    queueFirebaseSync("fertilizers");
   }
 }
 
@@ -1048,7 +1127,7 @@ function persistPondOrder() {
   renderZonePonds();
 }
 
-document.querySelector("#phoneForm").addEventListener("submit", (event) => {
+document.querySelector("#phoneForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const phone = event.currentTarget.elements.phone.value.replace(/\s/g, "");
   if (!/^09\d{8}$/.test(phone)) {
@@ -1057,18 +1136,38 @@ document.querySelector("#phoneForm").addEventListener("submit", (event) => {
   }
   pendingPhone = phone;
   document.querySelector("#phoneError").textContent = "";
-  showCodeStep();
+  const submit = event.currentTarget.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  try {
+    const service = await firebaseServicePromise;
+    if (!service?.configured) throw new Error("Firebase 尚未設定。");
+    await service.sendOtp(phone);
+    showCodeStep();
+  } catch (error) {
+    document.querySelector("#phoneError").textContent = error.message || "目前無法傳送驗證碼，請稍後再試。";
+  } finally {
+    submit.disabled = false;
+  }
 });
 
-document.querySelector("#codeForm").addEventListener("submit", (event) => {
+document.querySelector("#codeForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (event.currentTarget.elements.code.value.trim() !== TEST_CODE) {
-    document.querySelector("#codeError").textContent = "驗證碼不正確，測試期間請輸入 123456。";
+  const code = event.currentTarget.elements.code.value.trim();
+  if (!/^\d{6}$/.test(code)) {
+    document.querySelector("#codeError").textContent = "請輸入簡訊中的 6 碼驗證碼。";
     return;
   }
-  account = { phone: pendingPhone, isLoggedIn: true };
-  saveAccount();
-  routeApp();
+  const submit = event.currentTarget.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  try {
+    const service = await firebaseServicePromise;
+    await service.confirmOtp(code);
+    document.querySelector("#codeError").textContent = "";
+  } catch (error) {
+    document.querySelector("#codeError").textContent = error.message || "驗證碼不正確或已過期。";
+  } finally {
+    submit.disabled = false;
+  }
 });
 
 document.querySelector("#farmForm").addEventListener("submit", (event) => {
@@ -1346,6 +1445,7 @@ harvestRecordForm.addEventListener("submit", (event) => {
     return;
   }
   harvestData = nextData;
+  queueFirebaseSync("harvest");
   error.textContent = "";
   showHarvestPonds(currentHarvestZoneId);
 });
@@ -1456,6 +1556,7 @@ shrimpPatrolRecordForm.addEventListener("submit", async (event) => {
     return;
   }
   shrimpPatrolData = { records, customConditions: shrimpPatrolData.customConditions };
+  queueFirebaseSync("patrol");
   error.textContent = "";
   showShrimpPatrolPonds(currentShrimpPatrolZoneId);
 });
@@ -1678,4 +1779,4 @@ document.addEventListener("click", (event) => {
   if (action === "close-pond-editor") pondEditorDialog.close();
 });
 
-routeApp();
+initializeFirebaseApp();
