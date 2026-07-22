@@ -1,11 +1,9 @@
-// Firebase Console → 專案設定 → 您的應用程式 → Web 應用程式，貼上 firebaseConfig。
-// 這些值是 Web 用戶端識別資訊；資料安全必須由 firestore.rules 控制。
 export const firebaseConfig = {
-  apiKey: "REPLACE_WITH_FIREBASE_API_KEY",
-  authDomain: "REPLACE_WITH_PROJECT_ID.firebaseapp.com",
-  projectId: "REPLACE_WITH_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "REPLACE_WITH_MESSAGING_SENDER_ID",
-  appId: "REPLACE_WITH_FIREBASE_APP_ID"
+  apiKey: "AIzaSyAZGrfG0s8YYjaaGne8NLd6ns60icW7-O8",
+  authDomain: "happy-shrimp-farmer.firebaseapp.com",
+  projectId: "happy-shrimp-farmer",
+  storageBucket: "happy-shrimp-farmer.firebasestorage.app",
+  messagingSenderId: "374325100895",
+  appId: "1:374325100895:web:cdd9ea01918ac41e51b6ea",
+  measurementId: "G-4GXEN6NDHE"
 };
-

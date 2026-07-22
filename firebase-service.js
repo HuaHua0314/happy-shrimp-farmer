@@ -80,13 +80,16 @@ export const firebaseService = {
     const profile = await getDoc(profileRef);
     let farmId = profile.data()?.activeFarmId || "";
     if (!farmId) farmId = await claimPhoneInvitation(user);
-    if (!farmId && localFarm?.id) farmId = localFarm.id;
+    const creatingFarm = !farmId && Boolean(localFarm?.id);
+    if (creatingFarm) farmId = localFarm.id;
     if (!farmId) return null;
     const farmRef = doc(db, "farms", farmId);
-    const farmSnapshot = await getDoc(farmRef);
-    if (!farmSnapshot.exists()) {
+    if (creatingFarm) {
       await setDoc(farmRef, { name: localFarm?.name || "我的農場", ownerId: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await setDoc(doc(db, "farms", farmId, "members", user.uid), { uid: user.uid, phone: user.phoneNumber || "", name: user.phoneNumber || "擁有者", role: "owner", status: "active", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    } else {
+      const membership = await getDoc(doc(db, "farms", farmId, "members", user.uid));
+      if (!membership.exists()) throw new Error("目前帳號不是這個農場的成員。 ");
     }
     await setDoc(profileRef, { phone: user.phoneNumber || "", activeFarmId: farmId, updatedAt: serverTimestamp() }, { merge: true });
     return farmId;
