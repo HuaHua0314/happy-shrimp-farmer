@@ -496,15 +496,6 @@ function fertilizerDefaults(name) {
   return fertilizerData.items.find((item) => sameName(item.name, name)) || null;
 }
 
-function renderFertilizerNameOptions() {
-  const list = document.querySelector("#fertilizerNameOptions");
-  list.replaceChildren(...fertilizerData.items.map((item) => {
-    const option = document.createElement("option");
-    option.value = item.name;
-    return option;
-  }));
-}
-
 function fertilizerAmount(quantity, unitPrice) {
   return Number((Number(quantity || 0) * Number(unitPrice || 0)).toFixed(2));
 }
@@ -513,13 +504,61 @@ function formatMoney(value) {
   return new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 2 }).format(Number(value || 0));
 }
 
+function setFertilizerUnit(row, unit) {
+  const select = row.querySelector(".fertilizer-unit-select");
+  const customWrap = row.querySelector(".fertilizer-custom-unit-wrap");
+  const customInput = row.querySelector(".fertilizer-custom-unit");
+  const known = [...select.options].some((option) => option.value === unit && option.value !== "__other__");
+  select.value = known ? unit : (unit ? "__other__" : "");
+  customWrap.hidden = select.value !== "__other__";
+  customInput.value = known ? "" : unit || "";
+}
+
+function setFertilizerQuantity(row, quantity) {
+  const select = row.querySelector(".fertilizer-quantity-select");
+  const customWrap = row.querySelector(".fertilizer-custom-quantity-wrap");
+  const customInput = row.querySelector(".fertilizer-custom-quantity");
+  const text = quantity === "" || quantity == null ? "" : String(Number(quantity));
+  const known = [...select.options].some((option) => option.value === text && option.value !== "__custom__");
+  select.value = known ? text : (text ? "__custom__" : "");
+  customWrap.hidden = select.value !== "__custom__";
+  customInput.value = known ? "" : text;
+}
+
+function fertilizerRowQuantity(row) {
+  const select = row.querySelector(".fertilizer-quantity-select");
+  return select.value === "__custom__" ? Number(row.querySelector(".fertilizer-custom-quantity").value) : Number(select.value);
+}
+
+function fertilizerRowUnit(row) {
+  const select = row.querySelector(".fertilizer-unit-select");
+  return select.value === "__other__" ? cleanName(row.querySelector(".fertilizer-custom-unit").value) : select.value;
+}
+
 function addFertilizerItem(initial = {}) {
   const item = document.createElement("article");
   item.className = "fertilizer-item";
-  item.innerHTML = `<div class="fertilizer-item-heading"><strong>肥料</strong><button class="fertilizer-remove" type="button" aria-label="移除這項肥料">移除</button></div><label>肥料名稱<input class="flow-input fertilizer-name" list="fertilizerNameOptions" maxlength="50" placeholder="選擇或輸入名稱"></label><div class="fertilizer-field-grid"><label>使用量<input class="flow-input fertilizer-quantity" type="number" inputmode="decimal" min="0.01" step="0.01"></label><label>單位<input class="flow-input fertilizer-unit" maxlength="12" placeholder="公斤／包"></label><label>單價<input class="flow-input fertilizer-price" type="number" inputmode="decimal" min="0" step="0.01"></label></div><p class="fertilizer-amount">本項金額：<strong>0</strong> 元</p>`;
-  item.querySelector(".fertilizer-name").value = initial.name || "";
-  item.querySelector(".fertilizer-quantity").value = initial.quantity ?? "";
-  item.querySelector(".fertilizer-unit").value = initial.unit || "";
+  item.innerHTML = `<div class="fertilizer-item-heading"><strong>肥料</strong><button class="fertilizer-remove" type="button" aria-label="移除這項肥料">移除</button></div><label>肥料名稱<select class="flow-input fertilizer-select"><option value="">請選擇肥料</option></select></label><label class="fertilizer-new-name-wrap" hidden>新肥料名稱<input class="flow-input fertilizer-new-name" maxlength="50" placeholder="請輸入肥料名稱"></label><div class="fertilizer-field-grid"><label>使用量<select class="flow-input fertilizer-quantity-select"><option value="">請選擇</option><option value="0.25">1/4</option><option value="0.333">1/3</option><option value="0.5">1/2</option><option value="0.75">3/4</option><option value="1">1</option><option value="1.5">1.5</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="__custom__">自行輸入</option></select></label><label class="fertilizer-custom-quantity-wrap" hidden>自行輸入使用量<input class="flow-input fertilizer-custom-quantity" type="number" inputmode="decimal" min="0.001" step="0.001" placeholder="例如：1.25"></label><label>單位<select class="flow-input fertilizer-unit-select"><option value="">請選擇</option><option value="包">包</option><option value="公斤">公斤</option><option value="公克">公克</option><option value="瓶">瓶</option><option value="公升">公升</option><option value="毫升">毫升</option><option value="桶">桶</option><option value="袋">袋</option><option value="支">支</option><option value="顆">顆</option><option value="__other__">其他（自行輸入）</option></select></label><label class="fertilizer-custom-unit-wrap" hidden>其他單位<input class="flow-input fertilizer-custom-unit" maxlength="12" placeholder="請輸入單位"></label><label>單價<input class="flow-input fertilizer-price" type="number" inputmode="decimal" min="0" step="0.01"></label></div><p class="fertilizer-amount">本項金額：<strong>0</strong> 元</p>`;
+  const fertilizerSelect = item.querySelector(".fertilizer-select");
+  fertilizerData.items.forEach((fertilizer) => {
+    const option = document.createElement("option");
+    option.value = fertilizer.name;
+    option.textContent = fertilizer.name;
+    fertilizerSelect.append(option);
+  });
+  const addOption = document.createElement("option");
+  addOption.value = "__new__";
+  addOption.textContent = "＋新增其他肥料";
+  fertilizerSelect.append(addOption);
+  const saved = initial.name ? fertilizerDefaults(initial.name) : null;
+  if (initial.name && saved) fertilizerSelect.value = saved.name;
+  else if (initial.name) {
+    fertilizerSelect.value = "__new__";
+    item.querySelector(".fertilizer-new-name-wrap").hidden = false;
+    item.querySelector(".fertilizer-new-name").value = initial.name;
+  }
+  setFertilizerQuantity(item, initial.quantity ?? "");
+  setFertilizerUnit(item, initial.unit || "");
   item.querySelector(".fertilizer-price").value = initial.unitPrice ?? "";
   document.querySelector("#fertilizerItems").append(item);
   updateFertilizingTotals();
@@ -528,7 +567,7 @@ function addFertilizerItem(initial = {}) {
 function updateFertilizingTotals() {
   let total = 0;
   document.querySelectorAll("#fertilizerItems .fertilizer-item").forEach((item) => {
-    const amount = fertilizerAmount(item.querySelector(".fertilizer-quantity").value, item.querySelector(".fertilizer-price").value);
+    const amount = fertilizerAmount(fertilizerRowQuantity(item), item.querySelector(".fertilizer-price").value);
     item.querySelector(".fertilizer-amount strong").textContent = formatMoney(amount);
     total += amount;
   });
@@ -540,9 +579,10 @@ function collectFertilizerItems(errorElement) {
   if (!rows.length) { errorElement.textContent = "請至少新增一項肥料。"; return null; }
   const items = [];
   for (const row of rows) {
-    const name = cleanName(row.querySelector(".fertilizer-name").value);
-    const quantity = Number(row.querySelector(".fertilizer-quantity").value);
-    const unit = cleanName(row.querySelector(".fertilizer-unit").value);
+    const selection = row.querySelector(".fertilizer-select").value;
+    const name = selection === "__new__" ? cleanName(row.querySelector(".fertilizer-new-name").value) : cleanName(selection);
+    const quantity = fertilizerRowQuantity(row);
+    const unit = fertilizerRowUnit(row);
     const unitPriceText = row.querySelector(".fertilizer-price").value.trim();
     const unitPrice = Number(unitPriceText);
     if (!name) { errorElement.textContent = "請輸入每項肥料名稱。"; return null; }
@@ -566,7 +606,6 @@ function showFertilizingRecord(pondId) {
   document.querySelector("#fertilizingPondTitle").textContent = pond.name;
   document.querySelector("#fertilizingTime").textContent = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
   document.querySelector("#fertilizingRecordError").textContent = "";
-  renderFertilizerNameOptions();
   addFertilizerItem();
   window.scrollTo(0, 0);
 }
@@ -958,16 +997,41 @@ document.querySelector("#fertilizerItems").addEventListener("click", (event) => 
 });
 
 document.querySelector("#fertilizerItems").addEventListener("input", (event) => {
-  if (event.target.matches(".fertilizer-quantity, .fertilizer-price")) updateFertilizingTotals();
+  if (event.target.matches(".fertilizer-custom-quantity, .fertilizer-price")) updateFertilizingTotals();
 });
 
 document.querySelector("#fertilizerItems").addEventListener("change", (event) => {
-  if (!event.target.matches(".fertilizer-name")) return;
-  const defaults = fertilizerDefaults(event.target.value);
-  if (!defaults) return;
   const row = event.target.closest(".fertilizer-item");
-  row.querySelector(".fertilizer-unit").value = defaults.defaultUnit ?? defaults.unit ?? "";
-  row.querySelector(".fertilizer-price").value = defaults.defaultPrice ?? defaults.unitPrice ?? defaults.price ?? "";
+  if (!row) return;
+  if (event.target.matches(".fertilizer-select")) {
+    const isNew = event.target.value === "__new__";
+    row.querySelector(".fertilizer-new-name-wrap").hidden = !isNew;
+    if (!isNew) row.querySelector(".fertilizer-new-name").value = "";
+    const defaults = fertilizerDefaults(event.target.value);
+    if (defaults) {
+      setFertilizerUnit(row, defaults.defaultUnit ?? defaults.unit ?? "");
+      row.querySelector(".fertilizer-price").value = defaults.defaultPrice ?? defaults.unitPrice ?? defaults.price ?? "";
+    } else if (isNew) {
+      setFertilizerUnit(row, "");
+      row.querySelector(".fertilizer-price").value = "";
+      row.querySelector(".fertilizer-new-name").focus();
+    } else {
+      setFertilizerUnit(row, "");
+      row.querySelector(".fertilizer-price").value = "";
+    }
+  }
+  if (event.target.matches(".fertilizer-quantity-select")) {
+    const custom = event.target.value === "__custom__";
+    row.querySelector(".fertilizer-custom-quantity-wrap").hidden = !custom;
+    if (!custom) row.querySelector(".fertilizer-custom-quantity").value = "";
+    else row.querySelector(".fertilizer-custom-quantity").focus();
+  }
+  if (event.target.matches(".fertilizer-unit-select")) {
+    const custom = event.target.value === "__other__";
+    row.querySelector(".fertilizer-custom-unit-wrap").hidden = !custom;
+    if (!custom) row.querySelector(".fertilizer-custom-unit").value = "";
+    else row.querySelector(".fertilizer-custom-unit").focus();
+  }
   updateFertilizingTotals();
 });
 
