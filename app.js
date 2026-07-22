@@ -1634,6 +1634,7 @@ document.querySelectorAll("[data-feature]").forEach((button) => button.addEventL
   else if (feature === "settings" || feature === "profile") showSettings();
   else showDevelopment();
 }));
+document.querySelector("#harvestHomeButton").addEventListener("click", showHarvestZones);
 document.querySelectorAll("[data-home]").forEach((button) => button.addEventListener("click", showHome));
 document.addEventListener("click", (event) => {
   const action = event.target.closest("[data-action]")?.dataset.action;
