@@ -230,13 +230,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .apply-quantities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
 .harvest-record-main { width: min(620px, calc(100% - 32px)); padding-bottom: 42px; }
 .harvest-record-card { padding: 21px; }
-.harvest-items { display: grid; gap: 11px; margin-bottom: 18px; }
-.harvest-item { border: 1px solid var(--line); border-radius: 18px; padding: 14px; background: #fafafa; }
-.harvest-item h2 { margin: 0 0 11px; font-size: 1.12rem; }
-.harvest-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-.harvest-field-grid label { display: grid; gap: 6px; color: var(--muted); font-size: .84rem; font-weight: 750; }
-.harvest-field-grid .flow-input { margin-bottom: 8px; color: var(--ink); }
-.harvest-item > p { margin: 2px 0 0; text-align: right; }
+.harvest-items { display: grid; gap: 8px; margin-bottom: 18px; }
+.harvest-item { display: grid; grid-template-columns: 50px minmax(54px, .85fr) minmax(64px, 1fr) minmax(78px, auto); align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 16px; padding: 9px 11px; background: #fafafa; }
+.harvest-item h2 { margin: 0; font-size: 1rem; white-space: nowrap; }
+.harvest-inline-field { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--muted); font-size: .8rem; font-weight: 750; }
+.harvest-inline-field .flow-input { min-width: 0; min-height: 46px; margin: 0; padding: 8px; color: var(--ink); font-size: .95rem; }
+.harvest-item > p { margin: 0; font-size: .82rem; font-weight: 700; text-align: right; white-space: nowrap; }
 .harvest-item input:disabled { border-color: #e4e1de; background: #eceae8; color: #aaa39d; }
 .harvest-item:has(input:disabled) { opacity: .58; }
 .harvest-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 18px 0; border-radius: 18px; padding: 16px; background: #fff3e7; text-align: center; }

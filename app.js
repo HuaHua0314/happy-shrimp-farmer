@@ -719,8 +719,8 @@ function renderHarvestItems() {
     const item = document.createElement("article");
     item.className = "harvest-item";
     item.dataset.itemId = definition.id;
-    item.innerHTML = `<h2></h2><div class="harvest-field-grid"><label>重量（台斤）<input class="flow-input harvest-weight" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label><label>單價（元／台斤）<input class="flow-input harvest-price" type="number" inputmode="decimal" min="0" step="0.01"></label></div><p>小計：<strong class="harvest-subtotal">0</strong> 元</p>`;
-    item.querySelector("h2").textContent = definition.name;
+    item.innerHTML = `<h2></h2><label class="harvest-inline-field"><input class="flow-input harvest-weight" aria-label="重量（台斤）" type="number" inputmode="decimal" min="0" step="0.01" placeholder="重量"><span>斤</span></label><label class="harvest-inline-field"><input class="flow-input harvest-price" aria-label="單價（元／台斤）" type="number" inputmode="decimal" min="0" step="0.01" placeholder="單價"><span>元</span></label><p>小計：<strong class="harvest-subtotal">0</strong>元</p>`;
+    item.querySelector("h2").textContent = definition.id === "culled" ? "被打掉" : definition.name;
     item.querySelector(".harvest-price").value = harvestPrice(definition);
     return item;
   }));
