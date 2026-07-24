@@ -31,13 +31,20 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/farms/$(farmId)).data.ownerId == uid;
     }
 
+    function loginPhone() {
+      // TODO(production-auth): 正式上線後只保留 Firebase Phone Auth token 的 phone_number。
+      return request.auth.token.get('phone_number', '') != ''
+        ? request.auth.token.get('phone_number', '')
+        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phone;
+    }
+
     function hasValidInvite(farmId, uid) {
       return signedIn()
         && request.auth.uid == uid
         && request.resource.data.inviteId is string
         && exists(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId))
         && get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.farmId == farmId
-        && get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.phone == request.auth.token.phone_number
+        && get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.phone == loginPhone()
         && get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.status == 'pending';
     }
 
@@ -104,10 +111,10 @@ service cloud.firestore {
       allow create: if signedIn()
         && isFarmManager(request.resource.data.farmId);
       allow read: if signedIn()
-        && (resource.data.phone == request.auth.token.phone_number
+        && (resource.data.phone == loginPhone()
           || isFarmManager(resource.data.farmId));
       allow update: if signedIn()
-        && (resource.data.phone == request.auth.token.phone_number
+        && (resource.data.phone == loginPhone()
           || isFarmManager(resource.data.farmId));
       allow delete: if signedIn()
         && isFarmManager(resource.data.farmId);

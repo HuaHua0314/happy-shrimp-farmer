@@ -149,7 +149,7 @@ function clearFirebasePending(type) {
 
 async function syncFirebaseType(service, type) {
   if (!service?.configured || !firebaseUser) return false;
-  if (!activeFarmId && farmData.farm) activeFarmId = await service.ensureFarm(farmData.farm) || "";
+  if (!activeFarmId && farmData.farm) activeFarmId = await service.ensureFarm(farmData.farm, account.phone) || "";
   if (!activeFarmId) return false;
   if (type === "farm") await service.syncFarmStructure(activeFarmId, farmData.farm, farmData.zones, farmData.ponds);
   else if (type === "feeding") await service.syncRecords(activeFarmId, "feeding", feedingData.records);
@@ -290,10 +290,10 @@ async function initializeFirebaseApp() {
       routeApp();
       return;
     }
-    account = { phone: localPhoneFromFirebase(user.phoneNumber), isLoggedIn: true, uid: user.uid };
+    account = { phone: localPhoneFromFirebase(user.phoneNumber) || account.phone, isLoggedIn: true, uid: user.uid, authMode: user.isAnonymous ? "anonymous-development" : "phone" };
     saveAccount();
     try {
-      activeFarmId = await service.ensureFarm(farmData.farm) || "";
+      activeFarmId = await service.ensureFarm(farmData.farm, account.phone) || "";
       if (activeFarmId) {
         await flushPendingFirebaseSync(service);
         await loadOrMigrateFirebaseFarm(service, activeFarmId);
@@ -1182,22 +1182,25 @@ document.querySelector("#phoneForm").addEventListener("submit", async (event) =>
     return;
   }
   pendingPhone = phone;
+  account = { ...account, phone, isLoggedIn: false, authMode: "anonymous-development" };
+  saveAccount();
   document.querySelector("#phoneError").textContent = "";
   const submit = event.currentTarget.querySelector('button[type="submit"]');
   submit.disabled = true;
   try {
     const service = await firebaseServicePromise;
     if (!service?.configured) throw new Error("Firebase 尚未設定。");
-    await service.sendOtp(phone);
-    showCodeStep();
+    // TODO(production-auth): 正式上線時改回 service.sendOtp(phone) 並顯示驗證碼步驟。
+    await service.signInAnonymous(phone);
   } catch (error) {
-    document.querySelector("#phoneError").textContent = error.message || "目前無法傳送驗證碼，請稍後再試。";
+    document.querySelector("#phoneError").textContent = error.message || "目前無法使用開發模式登入，請稍後再試。";
   } finally {
     submit.disabled = false;
   }
 });
 
 document.querySelector("#codeForm").addEventListener("submit", async (event) => {
+  // TODO(production-auth): 手機驗證介面保留；匿名開發模式不會進入此步驟。
   event.preventDefault();
   const code = event.currentTarget.elements.code.value.trim();
   if (!/^\d{6}$/.test(code)) {

@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, RecaptchaVerifier, signInAnonymously, signInWithPhoneNumber, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, query, serverTimestamp, setDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -17,6 +17,7 @@ let auth = null;
 let db = null;
 let confirmationResult = null;
 let recaptchaVerifier = null;
+let developmentPhone = "";
 
 if (configured) {
   app = initializeApp(firebaseConfig);
@@ -34,16 +35,17 @@ function taiwanPhone(phone) {
 }
 
 function creator(user, displayName = "") {
-  return { uid: user.uid, phone: user.phoneNumber || "", name: displayName || user.phoneNumber || "成員" };
+  const phone = user.phoneNumber || developmentPhone || "";
+  return { uid: user.uid, phone, name: displayName || phone || "匿名開發成員" };
 }
 
-async function claimPhoneInvitation(user) {
-  if (!user.phoneNumber) return "";
-  const invitations = await getDocs(query(collection(db, "farmInvites"), where("phone", "==", user.phoneNumber)));
+async function claimPhoneInvitation(user, identityPhone) {
+  if (!identityPhone) return "";
+  const invitations = await getDocs(query(collection(db, "farmInvites"), where("phone", "==", identityPhone)));
   const invitation = invitations.docs.find((item) => item.data().status === "pending");
   if (!invitation) return "";
   const data = invitation.data();
-  await setDoc(doc(db, "farms", data.farmId, "members", user.uid), { uid: user.uid, phone: user.phoneNumber, name: user.phoneNumber, role: data.role || "member", status: "active", inviteId: invitation.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  await setDoc(doc(db, "farms", data.farmId, "members", user.uid), { uid: user.uid, phone: identityPhone, name: identityPhone, role: data.role || "member", status: "active", inviteId: invitation.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   await setDoc(invitation.ref, { status: "accepted", acceptedBy: user.uid, acceptedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
   return data.farmId;
 }
@@ -58,10 +60,24 @@ async function currentUser() {
 
 export const firebaseService = {
   configured,
+  authMode: "anonymous-development",
   onAuthChanged(callback) {
     if (!configured) { callback(null); return () => {}; }
     return onAuthStateChanged(auth, callback);
   },
+  async signInAnonymous(phone) {
+    requireConfigured();
+    // TODO(production-auth): 正式上線時改回 Phone Authentication，並把手機憑證連結到匿名帳號。
+    developmentPhone = taiwanPhone(phone);
+    const user = auth.currentUser || (await signInAnonymously(auth)).user;
+    await setDoc(doc(db, "users", user.uid), {
+      phone: developmentPhone,
+      authMode: "anonymous-development",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return user;
+  },
+  // TODO(production-auth): 保留 Phone Authentication API，正式上線時重新接回登入介面。
   async sendOtp(phone, buttonId = "sendCodeButton") {
     requireConfigured();
     recaptchaVerifier?.clear();
@@ -73,25 +89,36 @@ export const firebaseService = {
     return (await confirmationResult.confirm(code)).user;
   },
   async logout() { requireConfigured(); await signOut(auth); },
-  async ensureFarm(localFarm) {
+  async ensureFarm(localFarm, localDevelopmentPhone = "") {
     const user = await currentUser();
     if (!user) throw new Error("尚未登入 Firebase。 ");
     const profileRef = doc(db, "users", user.uid);
     const profile = await getDoc(profileRef);
+    const identityPhone = user.phoneNumber
+      || profile.data()?.phone
+      || (localDevelopmentPhone ? taiwanPhone(localDevelopmentPhone) : "");
+    developmentPhone = identityPhone;
+    if (identityPhone && profile.data()?.phone !== identityPhone) {
+      await setDoc(profileRef, {
+        phone: identityPhone,
+        authMode: user.isAnonymous ? "anonymous-development" : "phone",
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
     let farmId = profile.data()?.activeFarmId || "";
-    if (!farmId) farmId = await claimPhoneInvitation(user);
+    if (!farmId) farmId = await claimPhoneInvitation(user, identityPhone);
     const creatingFarm = !farmId && Boolean(localFarm?.id);
     if (creatingFarm) farmId = localFarm.id;
     if (!farmId) return null;
     const farmRef = doc(db, "farms", farmId);
     if (creatingFarm) {
       await setDoc(farmRef, { name: localFarm?.name || "我的農場", ownerId: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      await setDoc(doc(db, "farms", farmId, "members", user.uid), { uid: user.uid, phone: user.phoneNumber || "", name: user.phoneNumber || "擁有者", role: "owner", status: "active", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await setDoc(doc(db, "farms", farmId, "members", user.uid), { uid: user.uid, phone: identityPhone, name: identityPhone || "匿名開發擁有者", role: "owner", status: "active", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     } else {
       const membership = await getDoc(doc(db, "farms", farmId, "members", user.uid));
       if (!membership.exists()) throw new Error("目前帳號不是這個農場的成員。 ");
     }
-    await setDoc(profileRef, { phone: user.phoneNumber || "", activeFarmId: farmId, updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(profileRef, { phone: identityPhone, activeFarmId: farmId, authMode: user.isAnonymous ? "anonymous-development" : "phone", updatedAt: serverTimestamp() }, { merge: true });
     return farmId;
   },
   async loadFarm(farmId) {
