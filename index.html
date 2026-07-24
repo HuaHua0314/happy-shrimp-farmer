@@ -15,16 +15,20 @@
       <section class="flow-card" aria-labelledby="authTitle">
         <div id="phoneStep">
           <p class="flow-eyebrow">歡迎使用</p>
-          <h1 id="authTitle">手機登入</h1>
-          <p class="flow-copy">輸入台灣手機號碼，使用匿名開發模式開始設定蝦場。</p>
-          <p class="test-code-note">開發期間不會發送簡訊；正式上線時將切回手機驗證。</p>
-          <form id="phoneForm" novalidate>
-            <label class="field-label" for="loginPhone">手機號碼</label>
-            <input class="flow-input" id="loginPhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="0912345678" required>
-            <p id="phoneError" class="form-error" role="alert"></p>
-            <button id="sendCodeButton" class="button button-primary button-block" type="submit">使用開發模式登入</button>
-            <div id="recaptcha-container"></div>
-          </form>
+          <h1 id="authTitle">登入快樂蝦農</h1>
+          <p class="flow-copy">使用你的 Google 帳號安全登入。</p>
+          <button id="googleLoginButton" class="button button-primary button-block" type="button">使用 Google 登入</button>
+          <p id="googleLoginError" class="form-error" role="alert"></p>
+          <!-- TODO(phone-auth): 電話登入暫時隱藏，未來需要時可重新顯示此區塊。 -->
+          <div id="phoneLoginFallback" hidden>
+            <form id="phoneForm" novalidate>
+              <label class="field-label" for="loginPhone">手機號碼</label>
+              <input class="flow-input" id="loginPhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="0912345678" required>
+              <p id="phoneError" class="form-error" role="alert"></p>
+              <button id="sendCodeButton" class="button button-primary button-block" type="submit">取得驗證碼</button>
+              <div id="recaptcha-container"></div>
+            </form>
+          </div>
         </div>
         <!-- TODO(production-auth): 正式上線時重新啟用 Firebase Phone Authentication 驗證碼流程。 -->
         <div id="codeStep" hidden>
@@ -236,6 +240,7 @@
         <button class="settings-menu-item" type="button" data-action="open-farm-editor"><span><strong>農場名稱</strong><small id="settingsFarmSummary">尚未設定</small></span><b aria-hidden="true">›</b></button>
         <button class="settings-menu-item" type="button" data-action="open-zone-management"><span><strong>區域管理</strong><small id="settingsZoneSummary">0 個區域</small></span><b aria-hidden="true">›</b></button>
         <button class="settings-menu-item" type="button" data-action="open-pond-management"><span><strong>池子管理</strong><small id="settingsPondSummary">0 個池子</small></span><b aria-hidden="true">›</b></button>
+        <button class="settings-menu-item" type="button" data-action="logout"><span><strong>登出</strong><small>登出目前的 Google 帳號</small></span><b aria-hidden="true">›</b></button>
       </nav>
     </main>
   </div>
@@ -273,6 +278,6 @@
   <dialog id="zoneEditorDialog" class="dialog dialog-small"><form id="zoneEditorForm" method="dialog" novalidate><div class="dialog-heading"><div><p class="eyebrow">農場區域</p><h2 id="zoneEditorTitle">新增區域</h2></div><button class="icon-button" type="button" data-action="close-zone-editor" aria-label="關閉">&times;</button></div><label class="field-label" for="zoneEditorName">區域名稱</label><input class="flow-input" id="zoneEditorName" name="zoneName" maxlength="30" placeholder="例如：水尾區" required><p id="zoneEditorError" class="form-error" role="alert"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-zone-editor">取消</button><button id="zoneEditorSubmit" class="button button-primary" type="submit">新增</button></div></form></dialog>
   <dialog id="farmEditorDialog" class="dialog dialog-small"><form id="settingsFarmForm" method="dialog" novalidate><div class="dialog-heading"><div><p class="eyebrow">農場設定</p><h2>修改農場名稱</h2></div><button class="icon-button" type="button" data-action="close-farm-editor" aria-label="關閉">&times;</button></div><label class="field-label" for="settingsFarmName">農場名稱</label><input class="flow-input" id="settingsFarmName" name="farmName" maxlength="30" required><p id="settingsFarmError" class="form-error" role="alert"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-farm-editor">取消</button><button class="button button-primary" type="submit">儲存</button></div></form></dialog>
   <dialog id="pondEditorDialog" class="dialog dialog-small"><form id="pondEditorForm" method="dialog" novalidate><div class="dialog-heading"><div><p class="eyebrow">區域池子</p><h2 id="pondEditorTitle">新增池子</h2></div><button class="icon-button" type="button" data-action="close-pond-editor" aria-label="關閉">&times;</button></div><label class="field-label" for="pondEditorName">池子名稱</label><input class="flow-input" id="pondEditorName" name="pondName" maxlength="30" placeholder="例如：水尾1池" required><label class="field-label" for="pondEditorStatus">池子狀態</label><select class="flow-input" id="pondEditorStatus" name="status"><option value="active">使用中</option><option value="rest">休息</option></select><p id="pondEditorError" class="form-error" role="alert"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-action="close-pond-editor">取消</button><button id="pondEditorSubmit" class="button button-primary" type="submit">新增</button></div></form></dialog>
-  <script src="app.js?v=anonymous-auth-dev-v1"></script>
+  <script src="app.js?v=google-auth-v1"></script>
 </body>
 </html>

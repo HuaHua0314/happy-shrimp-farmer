@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, RecaptchaVerifier, signInAnonymously, signInWithPhoneNumber, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { getAuth, getRedirectResult, GoogleAuthProvider, linkWithPopup, linkWithRedirect, onAuthStateChanged, RecaptchaVerifier, signInAnonymously, signInWithCredential, signInWithPhoneNumber, signInWithPopup, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, query, serverTimestamp, setDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -18,6 +18,7 @@ let db = null;
 let confirmationResult = null;
 let recaptchaVerifier = null;
 let developmentPhone = "";
+let authenticatedDisplayName = "";
 
 if (configured) {
   app = initializeApp(firebaseConfig);
@@ -36,7 +37,7 @@ function taiwanPhone(phone) {
 
 function creator(user, displayName = "") {
   const phone = user.phoneNumber || developmentPhone || "";
-  return { uid: user.uid, phone, name: displayName || phone || "匿名開發成員" };
+  return { uid: user.uid, phone, name: displayName || authenticatedDisplayName || user.displayName || phone || "成員" };
 }
 
 async function claimPhoneInvitation(user, identityPhone) {
@@ -60,10 +61,44 @@ async function currentUser() {
 
 export const firebaseService = {
   configured,
-  authMode: "anonymous-development",
+  authMode: "google",
   onAuthChanged(callback) {
     if (!configured) { callback(null); return () => {}; }
     return onAuthStateChanged(auth, callback);
+  },
+  async completeGoogleRedirect() {
+    requireConfigured();
+    try {
+      const result = await getRedirectResult(auth);
+      return result?.user || auth.currentUser || null;
+    } catch (error) {
+      const credential = GoogleAuthProvider.credentialFromError(error);
+      if (error.code === "auth/credential-already-in-use" && credential) {
+        return (await signInWithCredential(auth, credential)).user;
+      }
+      throw error;
+    }
+  },
+  async signInGoogle(useRedirect = false) {
+    requireConfigured();
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const current = auth.currentUser;
+    if (current?.isAnonymous) {
+      // 將 Google 憑證連結到既有匿名 UID，保留原 Farm 與所有資料權限。
+      if (useRedirect) return linkWithRedirect(current, provider);
+      try {
+        return (await linkWithPopup(current, provider)).user;
+      } catch (error) {
+        const credential = GoogleAuthProvider.credentialFromError(error);
+        if (error.code === "auth/credential-already-in-use" && credential) {
+          return (await signInWithCredential(auth, credential)).user;
+        }
+        throw error;
+      }
+    }
+    if (useRedirect) return signInWithRedirect(auth, provider);
+    return (await signInWithPopup(auth, provider)).user;
   },
   async signInAnonymous(phone) {
     requireConfigured();
@@ -98,10 +133,14 @@ export const firebaseService = {
       || profile.data()?.phone
       || (localDevelopmentPhone ? taiwanPhone(localDevelopmentPhone) : "");
     developmentPhone = identityPhone;
+    authenticatedDisplayName = user.displayName || profile.data()?.displayName || "";
     if (identityPhone && profile.data()?.phone !== identityPhone) {
       await setDoc(profileRef, {
         phone: identityPhone,
-        authMode: user.isAnonymous ? "anonymous-development" : "phone",
+        displayName: user.displayName || "",
+        email: user.email || "",
+        photoURL: user.photoURL || "",
+        authMode: user.isAnonymous ? "anonymous-development" : (user.providerData.some((item) => item.providerId === "google.com") ? "google" : "phone"),
         updatedAt: serverTimestamp()
       }, { merge: true });
     }
@@ -113,12 +152,12 @@ export const firebaseService = {
     const farmRef = doc(db, "farms", farmId);
     if (creatingFarm) {
       await setDoc(farmRef, { name: localFarm?.name || "我的農場", ownerId: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      await setDoc(doc(db, "farms", farmId, "members", user.uid), { uid: user.uid, phone: identityPhone, name: identityPhone || "匿名開發擁有者", role: "owner", status: "active", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await setDoc(doc(db, "farms", farmId, "members", user.uid), { uid: user.uid, phone: identityPhone, email: user.email || "", name: user.displayName || identityPhone || "擁有者", role: "owner", status: "active", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     } else {
       const membership = await getDoc(doc(db, "farms", farmId, "members", user.uid));
       if (!membership.exists()) throw new Error("目前帳號不是這個農場的成員。 ");
     }
-    await setDoc(profileRef, { phone: identityPhone, activeFarmId: farmId, authMode: user.isAnonymous ? "anonymous-development" : "phone", updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(profileRef, { phone: identityPhone, email: user.email || "", displayName: user.displayName || "", photoURL: user.photoURL || "", activeFarmId: farmId, authMode: user.isAnonymous ? "anonymous-development" : (user.providerData.some((item) => item.providerId === "google.com") ? "google" : "phone"), updatedAt: serverTimestamp() }, { merge: true });
     return farmId;
   },
   async loadFarm(farmId) {

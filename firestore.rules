@@ -45,7 +45,8 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId))
         && get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.farmId == farmId
         && get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.phone == loginPhone()
-        && get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.status == 'pending';
+        && get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.status == 'pending'
+        && request.resource.data.role == get(/databases/$(database)/documents/farmInvites/$(request.resource.data.inviteId)).data.role;
     }
 
     match /users/{uid} {
@@ -66,7 +67,10 @@ service cloud.firestore {
           || isFarmCreator(farmId, uid)
           || hasValidInvite(farmId, uid);
         allow update: if isFarmManager(farmId)
-          || (signedIn() && request.auth.uid == uid);
+          || (signedIn()
+            && request.auth.uid == uid
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.role == resource.data.role);
         allow delete: if isFarmManager(farmId)
           && uid != get(/databases/$(database)/documents/farms/$(farmId)).data.ownerId;
       }

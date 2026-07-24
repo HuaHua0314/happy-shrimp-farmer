@@ -7,6 +7,7 @@ const FERTILIZING_KEY = "happyShrimpFarmer.fertilizing.v1";
 const FERTILIZER_KEY = "happyShrimpFarmer.fertilizers.v1";
 const HARVEST_KEY = "happyShrimpFarmer.harvest.v1";
 const FIREBASE_PENDING_KEY = "happyShrimpFarmer.firebasePending.v1";
+const FIREBASE_CACHE_OWNER_KEY = "happyShrimpFarmer.firebaseCacheOwner.v1";
 const HARVEST_ITEMS = [
   { id: "male", name: "公蝦", defaultPrice: 360 },
   { id: "female", name: "母蝦", defaultPrice: 280 },
@@ -107,6 +108,22 @@ function loadJson(key, fallback) {
 }
 
 function saveJson(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+
+function resetFirebaseBackedCache() {
+  farmData = normalizeFarmData(null);
+  feedingData = { records: [] };
+  shrimpPatrolData = { records: [], customConditions: [] };
+  fertilizingData = { records: [] };
+  fertilizerData = { items: [] };
+  harvestData = { records: [], prices: {} };
+  saveJson(FARM_KEY, farmData);
+  saveJson(FEEDING_KEY, feedingData);
+  saveJson(SHRIMP_PATROL_KEY, shrimpPatrolData);
+  saveJson(FERTILIZING_KEY, fertilizingData);
+  saveJson(FERTILIZER_KEY, fertilizerData);
+  saveJson(HARVEST_KEY, harvestData);
+  saveJson(FIREBASE_PENDING_KEY, []);
+}
 
 function loadPatrolState() {
   let saved = loadJson(STORAGE_KEY, null);
@@ -217,7 +234,7 @@ function hideAppViews() {
 
 function routeApp() {
   hideAppViews();
-  if (!account.isLoggedIn || !/^09\d{8}$/.test(account.phone || "")) {
+  if (!account.isLoggedIn || !account.uid || firebaseUser?.isAnonymous) {
     authView.hidden = false;
     showPhoneStep();
     return;
@@ -281,6 +298,11 @@ async function initializeFirebaseApp() {
     document.querySelector("#phoneError").textContent = "Firebase 尚未設定，請先完成 firebase-config.js。";
     return;
   }
+  try {
+    await service.completeGoogleRedirect();
+  } catch (error) {
+    document.querySelector("#googleLoginError").textContent = googleLoginMessage(error);
+  }
   service.onAuthChanged(async (user) => {
     firebaseUser = user;
     if (!user) {
@@ -290,7 +312,17 @@ async function initializeFirebaseApp() {
       routeApp();
       return;
     }
-    account = { phone: localPhoneFromFirebase(user.phoneNumber) || account.phone, isLoggedIn: true, uid: user.uid, authMode: user.isAnonymous ? "anonymous-development" : "phone" };
+    const cacheOwnerUid = localStorage.getItem(FIREBASE_CACHE_OWNER_KEY) || "";
+    if (cacheOwnerUid && cacheOwnerUid !== user.uid) resetFirebaseBackedCache();
+    const isGoogleUser = user.providerData.some((item) => item.providerId === "google.com");
+    account = {
+      phone: localPhoneFromFirebase(user.phoneNumber) || account.phone,
+      email: user.email || "",
+      displayName: user.displayName || "",
+      isLoggedIn: !user.isAnonymous,
+      uid: user.uid,
+      authMode: user.isAnonymous ? "anonymous-development" : (isGoogleUser ? "google" : "phone")
+    };
     saveAccount();
     try {
       activeFarmId = await service.ensureFarm(farmData.farm, account.phone) || "";
@@ -298,11 +330,24 @@ async function initializeFirebaseApp() {
         await flushPendingFirebaseSync(service);
         await loadOrMigrateFirebaseFarm(service, activeFarmId);
       }
+      localStorage.setItem(FIREBASE_CACHE_OWNER_KEY, user.uid);
     } catch (error) {
       console.error("Firebase initial sync failed", error);
     }
     routeApp();
   });
+}
+
+function useGoogleRedirect() {
+  return window.matchMedia("(max-width: 767px)").matches
+    || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function googleLoginMessage(error) {
+  if (error?.code === "auth/popup-closed-by-user") return "登入視窗已關閉，請再試一次。";
+  if (error?.code === "auth/popup-blocked") return "瀏覽器阻擋了登入視窗，請允許彈出視窗後再試。";
+  if (error?.code === "auth/credential-already-in-use") return "這個 Google 帳號已連結其他使用者，請使用原本的 Google 帳號登入。";
+  return error?.message || "目前無法使用 Google 登入，請稍後再試。";
 }
 
 window.addEventListener("online", () => {
@@ -1174,6 +1219,21 @@ function persistPondOrder() {
   renderZonePonds();
 }
 
+document.querySelector("#googleLoginButton").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  const errorElement = document.querySelector("#googleLoginError");
+  errorElement.textContent = "";
+  button.disabled = true;
+  try {
+    const service = await firebaseServicePromise;
+    if (!service?.configured) throw new Error("Firebase 尚未設定。");
+    await service.signInGoogle(useGoogleRedirect());
+  } catch (error) {
+    errorElement.textContent = googleLoginMessage(error);
+    button.disabled = false;
+  }
+});
+
 document.querySelector("#phoneForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const phone = event.currentTarget.elements.phone.value.replace(/\s/g, "");
@@ -1182,7 +1242,7 @@ document.querySelector("#phoneForm").addEventListener("submit", async (event) =>
     return;
   }
   pendingPhone = phone;
-  account = { ...account, phone, isLoggedIn: false, authMode: "anonymous-development" };
+  account = { ...account, phone, isLoggedIn: false, authMode: "phone" };
   saveAccount();
   document.querySelector("#phoneError").textContent = "";
   const submit = event.currentTarget.querySelector('button[type="submit"]');
@@ -1190,17 +1250,18 @@ document.querySelector("#phoneForm").addEventListener("submit", async (event) =>
   try {
     const service = await firebaseServicePromise;
     if (!service?.configured) throw new Error("Firebase 尚未設定。");
-    // TODO(production-auth): 正式上線時改回 service.sendOtp(phone) 並顯示驗證碼步驟。
-    await service.signInAnonymous(phone);
+    // TODO(phone-auth): 電話登入目前由 HTML 隱藏；重新啟用介面時可直接沿用此 OTP 流程。
+    await service.sendOtp(phone);
+    showCodeStep();
   } catch (error) {
-    document.querySelector("#phoneError").textContent = error.message || "目前無法使用開發模式登入，請稍後再試。";
+    document.querySelector("#phoneError").textContent = error.message || "目前無法傳送驗證碼，請稍後再試。";
   } finally {
     submit.disabled = false;
   }
 });
 
 document.querySelector("#codeForm").addEventListener("submit", async (event) => {
-  // TODO(production-auth): 手機驗證介面保留；匿名開發模式不會進入此步驟。
+  // TODO(phone-auth): 電話驗證介面目前隱藏，未來可直接重新啟用。
   event.preventDefault();
   const code = event.currentTarget.elements.code.value.trim();
   if (!/^\d{6}$/.test(code)) {
@@ -1787,7 +1848,7 @@ document.querySelectorAll("[data-feature]").forEach((button) => button.addEventL
 }));
 document.querySelector("#harvestHomeButton").addEventListener("click", showHarvestZones);
 document.querySelectorAll("[data-home]").forEach((button) => button.addEventListener("click", showHome));
-document.addEventListener("click", (event) => {
+document.addEventListener("click", async (event) => {
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
   if (action === "back-phone") showPhoneStep();
@@ -1809,6 +1870,15 @@ document.addEventListener("click", (event) => {
   }
   if (action === "open-zone-management") showZoneManagement();
   if (action === "open-pond-management") showPondManagement();
+  if (action === "logout") {
+    if (!window.confirm("確定要登出嗎？")) return;
+    try {
+      const service = await firebaseServicePromise;
+      await service.logout();
+    } catch (error) {
+      window.alert(error?.message || "目前無法登出，請稍後再試。");
+    }
+  }
   if (action === "skip-onboarding") {
     farmData.onboardingCompleted = true;
     saveFarmData();
