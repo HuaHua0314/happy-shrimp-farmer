@@ -26,7 +26,7 @@
 
 ## Google 登入與既有匿名帳號
 
-- 手機版使用 `signInWithRedirect`，桌機版使用 `signInWithPopup`。
+- 使用 `signInWithPopup`（無 redirect 流程）。
 - 如果目前瀏覽器仍登入匿名開發帳號，系統會先將 Google provider 連結到原匿名 UID，以保留 Farm 與成員權限。
 - 電話登入的 HTML、事件與 Firebase service 方法仍保留，介面以 `phoneLoginFallback` 隱藏。
 - 本機 Firestore 快取會記錄使用者 UID，切換 Google 帳號時不會把上一位使用者的 localStorage 上傳成新農場。

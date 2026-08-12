@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getAuth, getRedirectResult, GoogleAuthProvider, linkWithPopup, linkWithRedirect, onAuthStateChanged, RecaptchaVerifier, signInAnonymously, signInWithCredential, signInWithPhoneNumber, signInWithPopup, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, linkWithPopup, onAuthStateChanged, RecaptchaVerifier, signInAnonymously, signInWithCredential, signInWithPhoneNumber, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, query, serverTimestamp, setDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -66,27 +66,14 @@ export const firebaseService = {
     if (!configured) { callback(null); return () => {}; }
     return onAuthStateChanged(auth, callback);
   },
-  async completeGoogleRedirect() {
-    requireConfigured();
-    try {
-      const result = await getRedirectResult(auth);
-      return result?.user || auth.currentUser || null;
-    } catch (error) {
-      const credential = GoogleAuthProvider.credentialFromError(error);
-      if (error.code === "auth/credential-already-in-use" && credential) {
-        return (await signInWithCredential(auth, credential)).user;
-      }
-      throw error;
-    }
-  },
-  async signInGoogle(useRedirect = false) {
+  // Redirect-based sign-in was removed; auth state is handled via `onAuthStateChanged`.
+  async signInGoogle() {
     requireConfigured();
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     const current = auth.currentUser;
     if (current?.isAnonymous) {
       // 將 Google 憑證連結到既有匿名 UID，保留原 Farm 與所有資料權限。
-      if (useRedirect) return linkWithRedirect(current, provider);
       try {
         return (await linkWithPopup(current, provider)).user;
       } catch (error) {
@@ -97,7 +84,6 @@ export const firebaseService = {
         throw error;
       }
     }
-    if (useRedirect) return signInWithRedirect(auth, provider);
     return (await signInWithPopup(auth, provider)).user;
   },
   async signInAnonymous(phone) {
