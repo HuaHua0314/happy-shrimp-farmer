@@ -1,20 +1,156 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>訂單管理</title><style>
-*{box-sizing:border-box}body{font-family:sans-serif;margin:auto;max-width:1100px;padding:20px;background:#fff8ee;color:#243431}button,input,select,textarea{padding:9px;margin:4px;border:1px solid #ccc;border-radius:7px}button{cursor:pointer}.card{background:#fff;padding:16px;margin:12px 0;border-radius:12px;border:1px solid #eadfce}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stats b{display:block;font-size:25px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}.hidden{display:none}.item{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:5px}.table{overflow:auto}table{width:100%;border-collapse:collapse;min-width:850px}td,th{padding:9px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}.primary{background:#ed7b31;color:white}.danger{color:#b83b31}.ok{color:#237650}dialog{width:min(750px,95%);border:0;border-radius:12px}.pending span{display:inline-block;padding:8px;border:1px solid #ddd;border-radius:7px;margin:4px}@media(max-width:650px){.stats{grid-template-columns:1fr 1fr}.item{grid-template-columns:1fr 1fr}}</style></head><body>
-<header class="row between"><h1>開心蝦農｜訂單管理</h1><div id="user" class="hidden"><span id="who"></span><button id="logout">登出</button></div></header>
-<section id="auth" class="card"><h2>登入</h2><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="密碼"><input id="operator" placeholder="操作人員"><button id="login" class="primary">登入</button><button id="register">註冊</button><p id="msg"></p></section>
-<main id="app" class="hidden"><div class="stats"><div class="card">訂單總包數<b id="tp">0</b></div><div class="card">已出貨包數<b id="sp">0</b></div><div class="card">未出貨包數<b id="up">0</b></div><div class="card">訂單總金額<b id="ta">$0</b></div><div class="card">已收款金額<b id="pa">$0</b></div><div class="card">未收款金額<b id="ua">$0</b></div></div><section class="card"><h2>未出貨品項統計</h2><div id="pending" class="pending"></div></section><section class="card"><div class="row between"><h2>訂單</h2><div><button id="products">商品管理</button><button id="add" class="primary">新增訂單</button></div></div><div class="row"><input id="search" placeholder="搜尋"><select id="sf"><option value="">全部出貨</option><option value="0">未出貨</option><option value="1">已出貨</option></select><select id="pf"><option value="">全部收款</option><option value="0">未收款</option><option value="1">已收款</option></select></div><div class="table"><table><thead><tr><th>訂購人</th><th>商品</th><th>金額</th><th>出貨</th><th>收款</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div></section></main>
-<dialog id="od"><form id="of"><div class="row between"><h2 id="ot"></h2><button type="button" class="close">關閉</button></div><input type="hidden" id="oid"><input id="customer" required placeholder="訂購人"><select id="contact"><option>Line</option><option>IG</option><option>FB</option><option>賣貨便</option><option>好賣家</option><option>脆</option></select><div class="row between"><b>訂購商品</b><button type="button" id="additem">＋增加商品</button></div><div id="items"></div><select id="shipped"><option value="0">未出貨</option><option value="1">已出貨</option></select><select id="paid"><option value="0">未收款</option><option value="1">已收款</option></select><input id="delivery" placeholder="交貨方式"><textarea id="notes" placeholder="備註"></textarea><p id="calc"></p><button class="primary">儲存訂單</button></form></dialog>
-<dialog id="pd"><form id="productForm"><div class="row between"><h2>商品管理</h2><button type="button" class="close">關閉</button></div><div id="plist"></div><input id="pname" required placeholder="商品名稱"><input id="pprice" required type="number" min="0" placeholder="單價"><button class="primary">新增商品</button></form></dialog>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script><script>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>訂單管理</title>
+<style>
+*{box-sizing:border-box}body{font-family:sans-serif;margin:auto;max-width:1100px;padding:20px;background:#fff8ee;color:#243431}button,input,select,textarea{padding:10px;margin:4px;border:1px solid #ccc;border-radius:9px;font:inherit}button{cursor:pointer;min-height:42px}.card{background:#fff;padding:16px;margin:12px 0;border-radius:14px;border:1px solid #eadfce}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stats b{display:block;font-size:25px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}.hidden{display:none}.item{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:5px}.primary{background:#ed7b31;color:white}.danger{color:#b83b31}.ok{color:#237650}dialog{width:min(750px,95%);border:0;border-radius:12px}.pending span{display:inline-block;padding:8px;border:1px solid #ddd;border-radius:7px;margin:4px}.order-list{display:grid;gap:14px;margin-top:16px}.order-card{background:#fff;border:1px solid #eadfce;border-radius:16px;padding:16px;box-shadow:0 4px 14px #533d2612}.order-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.order-name{font-size:20px;margin:0 0 5px}.contact-line,.order-meta{color:#707a76;font-size:13px}.card-actions{display:flex;gap:6px;flex-shrink:0}.card-actions button{margin:0;padding:8px 12px}.product-lines{margin:14px 0;border-top:1px solid #eee7dd;border-bottom:1px solid #eee7dd}.product-line{display:flex;justify-content:space-between;gap:10px;padding:11px 0}.product-line+.product-line{border-top:1px dashed #eee7dd}.gift{color:#ed7b31;font-weight:700;margin-left:5px}.item-price{font-weight:700;white-space:nowrap}.order-details{display:grid;gap:5px;margin:11px 0}.order-foot{display:flex;justify-content:space-between;gap:12px;align-items:flex-end}.status-group{display:flex;gap:8px;flex-wrap:wrap}.status{font-weight:700;background:#fff;padding:8px 11px;margin:0}.ship-pending{color:#c65b16;border:2px solid #ed7b31}.ship-done{color:#55716b;background:#edf4f2;border:1px solid #cbdcd7}.pay-pending{color:#16704a;border:2px solid #36a36f}.pay-done{color:#6d7471;background:#f0f1f0;border:1px solid #d5d8d6}.order-total{text-align:right;color:#707a76}.order-total b{display:block;color:#173d38;font-size:22px}.empty-orders{text-align:center;color:#777;padding:30px}@media(max-width:650px){body{padding:12px}.stats{grid-template-columns:1fr 1fr}.item{grid-template-columns:1fr 1fr}.order-card{padding:14px}.order-head{align-items:flex-start}.card-actions button{min-height:40px}.order-foot{align-items:stretch;flex-direction:column}.order-total{text-align:left}.row>input,.row>select{flex:1;min-width:130px}}</style>
+</head>
+<body>
+<header class="row between">
+<h1>開心蝦農｜訂單管理</h1>
+<div id="user" class="hidden">
+<span id="who">
+</span>
+<button id="logout">登出</button>
+</div>
+</header>
+<section id="auth" class="card">
+<h2>登入</h2>
+<input id="email" type="email" placeholder="Email">
+<input id="password" type="password" placeholder="密碼">
+<input id="operator" placeholder="操作人員">
+<button id="login" class="primary">登入</button>
+<button id="register">註冊</button>
+<p id="msg">
+</p>
+</section>
+<main id="app" class="hidden">
+<div class="stats">
+<div class="card">訂單總包數<b id="tp">0</b>
+</div>
+<div class="card">已出貨包數<b id="sp">0</b>
+</div>
+<div class="card">未出貨包數<b id="up">0</b>
+</div>
+<div class="card">訂單總金額<b id="ta">$0</b>
+</div>
+<div class="card">已收款金額<b id="pa">$0</b>
+</div>
+<div class="card">未收款金額<b id="ua">$0</b>
+</div>
+</div>
+<section class="card">
+<h2>未出貨品項統計</h2>
+<div id="pending" class="pending">
+</div>
+</section>
+<section class="card">
+<div class="row between">
+<h2>訂單</h2>
+<div>
+<button id="products">商品管理</button>
+<button id="add" class="primary">新增訂單</button>
+</div>
+</div>
+<div class="row">
+<input id="search" placeholder="搜尋">
+<select id="sf">
+<option value="">全部出貨</option>
+<option value="0">未出貨</option>
+<option value="1">已出貨</option>
+</select>
+<select id="pf">
+<option value="">全部收款</option>
+<option value="0">未收款</option>
+<option value="1">已收款</option>
+</select>
+</div>
+<div id="rows" class="order-list">
+</div>
+</section>
+</main>
+<dialog id="od">
+<form id="of">
+<div class="row between">
+<h2 id="ot">
+</h2>
+<button type="button" class="close">關閉</button>
+</div>
+<input type="hidden" id="oid">
+<input id="customer" required placeholder="訂購人">
+<select id="contact">
+<option>Line</option>
+<option>IG</option>
+<option>FB</option>
+<option>賣貨便</option>
+<option>好賣家</option>
+<option>脆</option>
+</select>
+<input id="contactAccount" placeholder="聯絡帳號（例如 Line ID）">
+<div class="row between">
+<b>訂購商品</b>
+<button type="button" id="additem">＋增加商品</button>
+</div>
+<div id="items">
+</div>
+<select id="shipped">
+<option value="0">未出貨</option>
+<option value="1">已出貨</option>
+</select>
+<select id="paid">
+<option value="0">未收款</option>
+<option value="1">已收款</option>
+</select>
+<input id="delivery" placeholder="交貨方式">
+<input id="pickupPlace" placeholder="取貨地點">
+<textarea id="notes" placeholder="備註">
+</textarea>
+<p id="calc">
+</p>
+<button class="primary">儲存訂單</button>
+</form>
+</dialog>
+<dialog id="pd">
+<form id="productForm">
+<div class="row between">
+<h2>商品管理</h2>
+<button type="button" class="close">關閉</button>
+</div>
+<div id="plist">
+</div>
+<input id="pname" required placeholder="商品名稱">
+<input id="pprice" required type="number" min="0" placeholder="單價">
+<button class="primary">新增商品</button>
+</form>
+</dialog>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js">
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js">
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js">
+</script>
+<script>
 const config={apiKey:"AIzaSyB6Wf3e-IvRbrqx5DMObkPdWIbHdOX_PnY",authDomain:"happy-shrimp-order.firebaseapp.com",databaseURL:"https://happy-shrimp-order-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"happy-shrimp-order",storageBucket:"happy-shrimp-order.firebasestorage.app",messagingSenderId:"117758119538",appId:"1:117758119538:web:9bc9087f6e5f113369fceb"};firebase.initializeApp(config);
 const $=x=>document.getElementById(x),auth=firebase.auth(),db=firebase.database(),money=n=>"$"+Number(n||0).toLocaleString(),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));let uid="",orders={},products={},op="";
 async function sign(m){op=$("operator").value.trim();if(!op)return $("msg").textContent="請填操作人員";localStorage.setItem("shrimpOperator",op);try{await auth[m==="login"?"signInWithEmailAndPassword":"createUserWithEmailAndPassword"]($("email").value,$("password").value)}catch(e){$("msg").textContent=e.message}}$("login").onclick=()=>sign("login");$("register").onclick=()=>sign("register");$("logout").onclick=()=>auth.signOut();
 auth.onAuthStateChanged(async u=>{if(!u){$("auth").classList.remove("hidden");$("app").classList.add("hidden");return}uid=u.uid;op=localStorage.getItem("shrimpOperator")||"家人";$("who").textContent=op;$("auth").classList.add("hidden");$("app").classList.remove("hidden");$("user").classList.remove("hidden");let r=db.ref(`users/${uid}/products`);if(!(await r.once("value")).exists())await r.push({name:"檸檬蝦",price:139});r.on("value",s=>{products=s.val()||{};renderProducts()});db.ref(`users/${uid}/orders`).on("value",s=>{orders=s.val()||{};render()})});
 function its(o){return Array.isArray(o.items)?o.items:o.items?Object.values(o.items):o.productId?[{productId:o.productId,productName:o.productName,unitPrice:+o.unitPrice||0,qty:+o.qty||0,gift:+o.gift||0}]:[]}function amount(o){return its(o).reduce((n,i)=>n+i.qty*i.unitPrice,0)}function packs(o){return its(o).reduce((n,i)=>n+(+i.qty||0)+(+i.gift||0),0)}function opts(id){return Object.entries(products).map(([k,p])=>`<option value="${k}" ${k===id?"selected":""}>${esc(p.name)}｜${money(p.price)}</option>`).join("")}
-function addItem(i={qty:1,gift:0}){let d=document.createElement("div");d.className="item";d.innerHTML=`<select class="ip">${opts(i.productId)}</select><input class="iq" type="number" min="0" value="${i.qty||0}"><input class="ig" type="number" min="0" value="${i.gift||0}"><button type="button" class="danger">移除</button>`;d.querySelector("button").onclick=()=>{if($("items").children.length>1)d.remove();calc()};d.querySelectorAll("input,select").forEach(x=>x.oninput=calc);$("items").append(d);calc()}function formItems(){return [...document.querySelectorAll(".item")].map(d=>{let id=d.querySelector(".ip").value,p=products[id]||{};return{productId:id,productName:p.name,unitPrice:+p.price||0,qty:+d.querySelector(".iq").value||0,gift:+d.querySelector(".ig").value||0}}).filter(i=>i.qty||i.gift)}function calc(){$("calc").textContent=`總包數 ${formItems().reduce((n,i)=>n+i.qty+i.gift,0)}｜金額 ${money(formItems().reduce((n,i)=>n+i.qty*i.unitPrice,0))}`} $("additem").onclick=()=>addItem();
-function openOrder(id){$("of").reset();$("oid").value=id||"";$("ot").textContent=id?"編輯訂單":"新增訂單";$("items").innerHTML="";let o=orders[id];if(o){$("customer").value=o.customer;$("contact").value=o.contactType||o.contact||"Line";its(o).forEach(addItem);$("shipped").value=+!!o.shipped;$("paid").value=+!!o.paid;$("delivery").value=o.delivery||"";$("notes").value=o.notes||""}else addItem();$("od").showModal()}$("add").onclick=()=>openOrder();
-$("of").onsubmit=async e=>{e.preventDefault();let items=formItems();if(!items.length)return alert("請至少輸入一項商品包數");let id=$("oid").value||db.ref(`users/${uid}/orders`).push().key,old=orders[id]||{};await db.ref(`users/${uid}/orders/${id}`).set({customer:$("customer").value.trim(),contactType:$("contact").value,items,amount:items.reduce((n,i)=>n+i.qty*i.unitPrice,0),delivery:$("delivery").value,notes:$("notes").value,shipped:$("shipped").value==="1",paid:$("paid").value==="1",createdAt:old.createdAt||firebase.database.ServerValue.TIMESTAMP,updatedAt:firebase.database.ServerValue.TIMESTAMP,updatedBy:op});$("od").close()};
-function render(){let a=Object.values(orders),tp=a.reduce((n,o)=>n+packs(o),0),sp=a.filter(o=>o.shipped).reduce((n,o)=>n+packs(o),0),ta=a.reduce((n,o)=>n+amount(o),0),pa=a.filter(o=>o.paid).reduce((n,o)=>n+amount(o),0);$("tp").textContent=tp;$("sp").textContent=sp;$("up").textContent=tp-sp;$("ta").textContent=money(ta);$("pa").textContent=money(pa);$("ua").textContent=money(ta-pa);let p={};a.filter(o=>!o.shipped).forEach(o=>its(o).forEach(i=>{let x=p[i.productId]||={name:i.productName,price:i.unitPrice,n:0};x.n+=+i.qty+(+i.gift||0)}));$("pending").innerHTML=Object.values(p).map(x=>`<span>${esc(x.name)} ${money(x.price)}｜未出貨 <b>${x.n}</b> 包</span>`).join("")||"目前沒有未出貨品項";let q=$("search").value.toLowerCase(),v=Object.entries(orders).filter(([,o])=>(!q||[o.customer,o.contactType,o.notes,...its(o).map(i=>i.productName)].join(" ").toLowerCase().includes(q))&&(!$("sf").value||String(+!!o.shipped)===$("sf").value)&&(!$("pf").value||String(+!!o.paid)===$("pf").value));$("rows").innerHTML=v.map(([id,o])=>`<tr><td><b>${esc(o.customer)}</b><br>${esc(o.contactType||o.contact)}</td><td>${its(o).map(i=>`${esc(i.productName)}：${i.qty}＋贈${i.gift||0}<br>`).join("")}</td><td>${money(amount(o))}</td><td><button onclick="toggleO('${id}','shipped')">${o.shipped?"已出貨":"未出貨"}</button></td><td><button onclick="toggleO('${id}','paid')">${o.paid?"已收款":"未收款"}</button></td><td><button onclick="openOrder('${id}')">編輯</button><button class="danger" onclick="removeO('${id}')">刪除</button></td></tr>`).join("")||'<tr><td colspan="6">目前沒有訂單</td></tr>'}
+function addItem(i={qty:1,gift:0}){let d=document.createElement("div");d.className="item";d.innerHTML=`<select class="ip">${opts(i.productId)}</select>
+<input class="iq" type="number" min="0" value="${i.qty||0}">
+<input class="ig" type="number" min="0" value="${i.gift||0}">
+<button type="button" class="danger">移除</button>`;d.querySelector("button").onclick=()=>{if($("items").children.length>1)d.remove();calc()};d.querySelectorAll("input,select").forEach(x=>x.oninput=calc);$("items").append(d);calc()}function formItems(){return [...document.querySelectorAll(".item")].map(d=>{let id=d.querySelector(".ip").value,p=products[id]||{};return{productId:id,productName:p.name,unitPrice:+p.price||0,qty:+d.querySelector(".iq").value||0,gift:+d.querySelector(".ig").value||0}}).filter(i=>i.qty||i.gift)}function calc(){$("calc").textContent=`總包數 ${formItems().reduce((n,i)=>n+i.qty+i.gift,0)}｜金額 ${money(formItems().reduce((n,i)=>n+i.qty*i.unitPrice,0))}`} $("additem").onclick=()=>addItem();
+function openOrder(id){$("of").reset();$("oid").value=id||"";$("ot").textContent=id?"編輯訂單":"新增訂單";$("items").innerHTML="";let o=orders[id];if(o){$("customer").value=o.customer;$("contact").value=o.contactType||o.contact||"Line";$("contactAccount").value=o.contactOther||o.contactAccount||"";its(o).forEach(addItem);$("shipped").value=+!!o.shipped;$("paid").value=+!!o.paid;$("delivery").value=o.delivery||"";$("pickupPlace").value=o.deliveryOther||o.deliveryDetail||o.detail||"";$("notes").value=o.notes||""}else addItem();$("od").showModal()}$("add").onclick=()=>openOrder();
+$("of").onsubmit=async e=>{e.preventDefault();let items=formItems();if(!items.length)return alert("請至少輸入一項商品包數");let isNew=!$("oid").value,id=$("oid").value||db.ref(`users/${uid}/orders`).push().key,old=orders[id]||{},data={customer:$("customer").value.trim(),contactType:$("contact").value,contactOther:$("contactAccount").value.trim(),items,amount:items.reduce((n,i)=>n+i.qty*i.unitPrice,0),delivery:$("delivery").value,deliveryDetail:$("pickupPlace").value.trim(),notes:$("notes").value,shipped:$("shipped").value==="1",paid:$("paid").value==="1",updatedAt:firebase.database.ServerValue.TIMESTAMP,updatedBy:op};if(isNew)data.createdAt=firebase.database.ServerValue.TIMESTAMP;else if(Object.prototype.hasOwnProperty.call(old,"createdAt"))data.createdAt=old.createdAt;await db.ref(`users/${uid}/orders/${id}`).set(data);$("od").close()};
+function createdTime(order){let value=Number(order.createdAt);return Number.isFinite(value)&&value>0?value:0}
+function formatCreatedAt(order){let value=createdTime(order);if(!value)return "舊資料（無建立時間）";return new Intl.DateTimeFormat("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(value))}
+function contactText(o){let type=o.contactType||o.contact||"",account=o.contactOther||o.contactAccount||"";return account?`${type} · ${account}`:type}
+function pickupText(o){let method=o.delivery||"未填取貨方式",place=o.deliveryOther||o.deliveryDetail||o.detail||"";return place?`${method} · ${place}`:method}
+function render(){let a=Object.values(orders),tp=a.reduce((n,o)=>n+packs(o),0),sp=a.filter(o=>o.shipped).reduce((n,o)=>n+packs(o),0),ta=a.reduce((n,o)=>n+amount(o),0),pa=a.filter(o=>o.paid).reduce((n,o)=>n+amount(o),0);$("tp").textContent=tp;$("sp").textContent=sp;$("up").textContent=tp-sp;$("ta").textContent=money(ta);$("pa").textContent=money(pa);$("ua").textContent=money(ta-pa);let p={};a.filter(o=>!o.shipped).forEach(o=>its(o).forEach(i=>{let x=p[i.productId]||={name:i.productName,price:i.unitPrice,n:0};x.n+=+i.qty+(+i.gift||0)}));$("pending").innerHTML=Object.values(p).map(x=>`<span>${esc(x.name)} ${money(x.price)}｜未出貨 <b>${x.n}</b> 包</span>`).join("")||"目前沒有未出貨品項";let q=$("search").value.toLowerCase(),v=Object.entries(orders).filter(([,o])=>(!q||[o.customer,contactText(o),o.notes,...its(o).map(i=>i.productName)].join(" ").toLowerCase().includes(q))&&(!$("sf").value||String(+!!o.shipped)===$("sf").value)&&(!$("pf").value||String(+!!o.paid)===$("pf").value)).sort((a,b)=>createdTime(b[1])-createdTime(a[1]));$("rows").innerHTML=v.map(([id,o])=>`<article class="order-card"><div class="order-head"><div><h3 class="order-name">${esc(o.customer)}</h3><div class="contact-line">${esc(contactText(o))}</div></div><div class="card-actions"><button onclick="openOrder('${id}')">編輯</button><button class="danger" onclick="removeO('${id}')">刪除</button></div></div><div class="product-lines">${its(o).map(i=>`<div class="product-line"><span>${esc(i.productName)} × ${+i.qty||0}${+i.gift?`<span class="gift">+${+i.gift}贈</span>`:""}</span><span class="item-price">${money((+i.qty||0)*(+i.unitPrice||0))}</span></div>`).join("")}</div><div class="order-details"><div>${esc(pickupText(o))}</div><div class="order-meta">建立日期時間 · ${esc(formatCreatedAt(o))}</div></div><div class="order-foot"><div class="status-group"><button class="status ${o.shipped?"ship-done":"ship-pending"}" onclick="toggleO('${id}','shipped')">${o.shipped?"已出貨":"未出貨"}</button><button class="status ${o.paid?"pay-done":"pay-pending"}" onclick="toggleO('${id}','paid')">${o.paid?"已收款":"未收款"}</button></div><div class="order-total">訂單總金額<b>${money(amount(o))}</b></div></div></article>`).join("")||'<div class="empty-orders">目前沒有訂單</div>'}
 window.openOrder=openOrder;window.toggleO=(id,k)=>db.ref(`users/${uid}/orders/${id}`).update({[k]:!orders[id][k],updatedBy:op});window.removeO=id=>confirm("確定刪除？")&&db.ref(`users/${uid}/orders/${id}`).remove();["search","sf","pf"].forEach(x=>$(x).oninput=render);
-function renderProducts(){$("plist").innerHTML=Object.entries(products).map(([id,p])=>`<p>${esc(p.name)}｜${money(p.price)} <button type="button" onclick="removeP('${id}')">刪除</button></p>`).join("")}window.removeP=id=>{if(Object.values(orders).some(o=>its(o).some(i=>i.productId===id)))return alert("已有訂單使用此商品");if(Object.keys(products).length<2)return alert("至少保留一項商品");confirm("確定刪除？")&&db.ref(`users/${uid}/products/${id}`).remove()};$("products").onclick=()=>$("pd").showModal();$("productForm").onsubmit=async e=>{e.preventDefault();await db.ref(`users/${uid}/products`).push({name:$("pname").value.trim(),price:+$("pprice").value});e.target.reset()};document.querySelectorAll(".close").forEach(x=>x.onclick=()=>x.closest("dialog").close());$("operator").value=localStorage.getItem("shrimpOperator")||"";
-</script></body></html>
+function renderProducts(){$("plist").innerHTML=Object.entries(products).map(([id,p])=>`<p>${esc(p.name)}｜${money(p.price)} <button type="button" onclick="removeP('${id}')">刪除</button>
+</p>`).join("")}window.removeP=id=>{if(Object.values(orders).some(o=>its(o).some(i=>i.productId===id)))return alert("已有訂單使用此商品");if(Object.keys(products).length<2)return alert("至少保留一項商品");confirm("確定刪除？")&&db.ref(`users/${uid}/products/${id}`).remove()};$("products").onclick=()=>$("pd").showModal();$("productForm").onsubmit=async e=>{e.preventDefault();await db.ref(`users/${uid}/products`).push({name:$("pname").value.trim(),price:+$("pprice").value});e.target.reset()};document.querySelectorAll(".close").forEach(x=>x.onclick=()=>x.closest("dialog").close());$("operator").value=localStorage.getItem("shrimpOperator")||"";
+</script>
+</body>
+</html>
