@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, linkWithPopup, onAuthStateChanged, RecaptchaVerifier, signInAnonymously, signInWithCredential, signInWithPhoneNumber, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, linkWithPopup, onAuthStateChanged, RecaptchaVerifier, signInAnonymously, signInWithCredential, signInWithPhoneNumber, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, query, serverTimestamp, setDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -23,6 +23,12 @@ let authenticatedDisplayName = "";
 if (configured) {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
+  // Persist auth state in local storage so refresh/close retains login.
+  try {
+    setPersistence(auth, browserLocalPersistence);
+  } catch (e) {
+    console.warn("Failed to set auth persistence:", e);
+  }
   auth.languageCode = "zh-TW";
   db = getFirestore(app);
 }

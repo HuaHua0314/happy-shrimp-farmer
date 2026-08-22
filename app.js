@@ -234,7 +234,7 @@ function hideAppViews() {
 
 function routeApp() {
   hideAppViews();
-  if (!account.isLoggedIn || !account.uid || firebaseUser?.isAnonymous) {
+  if (!firebaseUser || firebaseUser.isAnonymous) {
     authView.hidden = false;
     showPhoneStep();
     return;
@@ -298,11 +298,7 @@ async function initializeFirebaseApp() {
     document.querySelector("#phoneError").textContent = "Firebase 尚未設定，請先完成 firebase-config.js。";
     return;
   }
-  try {
-    await service.completeGoogleRedirect();
-  } catch (error) {
-    document.querySelector("#googleLoginError").textContent = googleLoginMessage(error);
-  }
+  // Redirect-based sign-in removed; rely on popup sign-in and onAuthChanged.
   service.onAuthChanged(async (user) => {
     firebaseUser = user;
     if (!user) {
@@ -338,10 +334,6 @@ async function initializeFirebaseApp() {
   });
 }
 
-function useGoogleRedirect() {
-  return window.matchMedia("(max-width: 767px)").matches
-    || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
 
 function googleLoginMessage(error) {
   if (error?.code === "auth/popup-closed-by-user") return "登入視窗已關閉，請再試一次。";
@@ -1227,7 +1219,7 @@ document.querySelector("#googleLoginButton").addEventListener("click", async (ev
   try {
     const service = await firebaseServicePromise;
     if (!service?.configured) throw new Error("Firebase 尚未設定。");
-    await service.signInGoogle(useGoogleRedirect());
+    await service.signInGoogle();
   } catch (error) {
     errorElement.textContent = googleLoginMessage(error);
     button.disabled = false;
