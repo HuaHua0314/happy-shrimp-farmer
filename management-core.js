@@ -24,6 +24,29 @@ function customerIndex(orders,profiles={},aliases={}){
  return Object.values(groups).map(g=>{const unique=new Map(g.orders.map(o=>[o.id,o]));g.orders=[...unique.values()].sort((a,b)=>(+a.createdAt||0)-(+b.createdAt||0)||String(a.id).localeCompare(String(b.id)));g.sourceIds.sort();g.channels=[...new Map(g.channels.map(c=>[JSON.stringify(c),c])).values()];const dates=g.orders.map(o=>+o.createdAt||0).filter(Boolean);return {...g,count:g.orders.length,total:g.orders.reduce((s,o)=>s+total(o),0),first:dates.length?Math.min(...dates):0,last:dates.length?Math.max(...dates):0}});
 }
 function customerCandidates(list,name,last3){if(!String(name||'').trim())return [];return list.filter(c=>String(c.name||'').trim()===name.trim());}
+const taipeiDate=t=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(t)).map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day};
+function updateCustomerProfile(state,id,changes,expected,actor,now){
+ if(!state||resolveCustomer(id,state.customerAliases)!==id)throw Error('客戶已合併或尚未同步，請重新開啟資料');
+ if(!equal(state.customers?.[id]||null,expected))throw Error('客戶資料已被其他裝置修改，請重新開啟後再編輯');
+ if(!String(changes.name||'').trim())throw Error('請填寫客戶姓名');
+ if(changes.phoneLast3&&!validLast3(changes.phoneLast3))throw Error('手機後三碼必須為 3 位數字或留白');
+ const n=JSON.parse(JSON.stringify(state));n.customers||={};n.customers[id]={...(n.customers[id]||{})};
+ for(const key of ['name','phoneLast3','phone','contactType','contactAccount','delivery','deliveryDetail','notes'])if(hasOwn(changes,key))n.customers[id][key]=key==='notes'?String(changes[key]||''):String(changes[key]||'').trim();
+ n.customers[id].updatedBy=actor;n.customers[id].updatedAt=now;return n;
+}
+// Search only: matches never bind or merge a customer until the user selects one.
+function searchCustomers(list,query,profiles={}){
+ const q=norm(query);if(!q)return [];
+ const phoneQuery=/^[+0-9\s()-]+$/.test(q)?q.replace(/\D/g,''):'';
+ const accountQuery=q.replace(/^@/,'');
+ return list.filter(c=>{
+  const history=c.orders||[],sources=(c.sourceIds||[c.id]).map(id=>profiles[id]).filter(Boolean);
+  const names=[c.name,...history.map(o=>o.customer),...sources.map(p=>p.name)];
+  const phones=[c.phone,c.phoneLast3,...history.flatMap(o=>[o.phone,o.phoneLast3]),...sources.flatMap(p=>[p.phone,p.phoneLast3])];
+  const accounts=[c.contactAccount,...(c.channels||[]).map(x=>x.account),...sources.map(p=>p.contactAccount)];
+  return names.some(v=>norm(v).includes(q))||phones.some(v=>norm(v).includes(q))||(phoneQuery&&phones.some(v=>String(v||'').replace(/\D/g,'').includes(phoneQuery)))||(accountQuery&&accounts.some(v=>norm(v).replace(/^@/,'').includes(accountQuery)));
+ });
+}
 // Customer selection/profile enrichment and the order commit atomically. No legacy orders are rewritten.
 function applyCustomerOrder(state,id,next,expected,operation,actor,now,selection){
  if(state?.inventoryOperations?.[operation])return state;
@@ -86,9 +109,10 @@ function report(orders,expenses,start,end){
  chosen.forEach(o=>{ordered+=total(o);if(o.paid)paid+=total(o);else unpaid+=total(o);items(o).forEach(i=>{let n=(+i.qty||0)+(+i.gift||0);packs+=n;if(o.shipped)shipped+=n;const key=i.productId||'legacy:'+i.productName;let row=sales[key]||={name:i.productName,qty:0,gift:0,revenue:0};row.qty+=+i.qty||0;row.gift+=+i.gift||0;row.revenue+=(+i.qty||0)*(+i.unitPrice||0)})});
  const cash=Object.values(orders).filter(o=>o.paid&&inside(o.paidAt)).reduce((s,o)=>s+total(o),0);
  const unknown=Object.values(orders).filter(o=>o.paid&&!o.paidAt);
- const expense=Object.values(expenses).filter(e=>e.date>=new Date(start).toLocaleDateString('en-CA',{timeZone:'Asia/Taipei'})&&e.date<new Date(end).toLocaleDateString('en-CA',{timeZone:'Asia/Taipei'})).reduce((s,e)=>s+(+e.amount||0),0);
+ const firstExpenseDate=taipeiDate(start),lastExpenseDate=taipeiDate(end);
+ const expense=Object.values(expenses).filter(e=>e.date>=firstExpenseDate&&e.date<lastExpenseDate).reduce((s,e)=>s+(+e.amount||0),0);
  return {count:chosen.length,packs,shipped,unshipped:packs-shipped,ordered,paid,unpaid,cash,expense,net:cash-expense,unknownCount:unknown.length,unknownAmount:unknown.reduce((s,o)=>s+total(o),0),sales:Object.values(sales).sort((a,b)=>b.qty-a.qty)};
 }
-root.ShrimpCore={hasOwn,items,total,sameItems,quantities,identity,validLast3,resolveCustomer,customerIndex,customerCandidates,applyCustomerOrder,mergeCustomers,undoCustomerMerge,applyOrder,report};
+root.ShrimpCore={version:'20261118-integrated5',hasOwn,items,total,sameItems,quantities,identity,validLast3,resolveCustomer,customerIndex,customerCandidates,searchCustomers,taipeiDate,updateCustomerProfile,applyCustomerOrder,mergeCustomers,undoCustomerMerge,applyOrder,report};
 if(typeof module!=='undefined')module.exports=root.ShrimpCore;
 })(globalThis);
