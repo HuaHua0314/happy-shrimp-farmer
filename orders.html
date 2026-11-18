@@ -127,6 +127,11 @@ body{font-size:14px}h1{font-size:24px}h2{font-size:19px;margin:8px 0}.stats{gap:
 <button class="primary">儲存訂單</button>
 </form>
 </dialog>
+<dialog id="customerDialog" aria-labelledby="customerDialogTitle">
+<div class="customer-dialog-heading"><h2 id="customerDialogTitle">客戶詳細資料</h2><button id="customerClose" type="button">關閉</button></div>
+<p id="customerNotice" role="status" class="management-help"></p>
+<div id="customerDetail"></div>
+</dialog>
 <dialog id="pd">
 <form id="productForm">
 <div class="row between">
