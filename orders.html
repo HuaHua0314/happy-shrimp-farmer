@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width">
 <script>
-window.SHRIMP_RELEASE='20261118-integrated5';
+window.SHRIMP_RELEASE='20261119-finance1';
 // Keep errors visible and retain their source; never store customer data or credentials.
 window.shrimpDiagnostics=[];
 window.reportScriptFailure=function(error,context){
  context=context||{};
- const entry={version:'20261118-integrated5',stage:context.stage||'執行',message:String(error&&error.message||error||'未知錯誤'),file:context.file||'',line:context.line||0,column:context.column||0};
+ const entry={version:'20261119-finance1',stage:context.stage||'執行',message:String(error&&error.message||error||'未知錯誤'),file:context.file||'',line:context.line||0,column:context.column||0};
  window.shrimpDiagnostics.push(entry);if(window.shrimpDiagnostics.length>10)window.shrimpDiagnostics.shift();
  const opaque=entry.message==='Script error.';
  const message='程式載入或執行失敗：'+entry.message+'\n階段：'+entry.stage+'；來源：'+(entry.file||'瀏覽器未提供來源')+(entry.line?'：'+entry.line+':'+entry.column:'')+'；版本：'+entry.version+(opaque?'\n跨網域錯誤未提供詳細原因，請保留此訊息並檢查 Safari 網頁檢閱器。':'')+'\n尚未完成的操作請勿視為已儲存。';
@@ -24,7 +24,7 @@ window.addEventListener('error',function(event){
 },true);
 </script>
 <title>快樂蝦農｜經營管理系統</title>
-<link rel="stylesheet" href="management.css?v=20261118-integrated5">
+<link rel="stylesheet" href="management.css?v=20261119-finance1">
 <style>
 *{box-sizing:border-box}body{font-family:sans-serif;margin:auto;max-width:1100px;padding:20px;background:#fff8ee;color:#243431}button,input,select,textarea{padding:10px;margin:4px;border:1px solid #ccc;border-radius:9px;font:inherit}button{cursor:pointer;min-height:42px}.card{background:#fff;padding:16px;margin:12px 0;border-radius:14px;border:1px solid #eadfce}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stats b{display:block;font-size:25px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}.hidden{display:none}.item{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:5px}.primary{background:#ed7b31;color:white}.danger{color:#b83b31}.ok{color:#237650}dialog{width:min(750px,95%);border:0;border-radius:12px}.pending span{display:inline-block;padding:8px;border:1px solid #ddd;border-radius:7px;margin:4px}.order-list{display:grid;gap:14px;margin-top:16px}.order-card{background:#fff;border:1px solid #eadfce;border-radius:16px;padding:16px;box-shadow:0 4px 14px #533d2612}.order-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.order-name{font-size:20px;margin:0 0 5px}.contact-line,.order-meta{color:#707a76;font-size:13px}.card-actions{display:flex;gap:6px;flex-shrink:0}.card-actions button{margin:0;padding:8px 12px}.product-lines{margin:14px 0;border-top:1px solid #eee7dd;border-bottom:1px solid #eee7dd}.product-line{display:flex;justify-content:space-between;gap:10px;padding:11px 0}.product-line+.product-line{border-top:1px dashed #eee7dd}.gift{color:#ed7b31;font-weight:700;margin-left:5px}.item-price{font-weight:700;white-space:nowrap}.order-details{display:grid;gap:5px;margin:11px 0}.order-foot{display:flex;justify-content:space-between;gap:12px;align-items:flex-end}.status-group{display:flex;gap:8px;flex-wrap:wrap}.status{font-weight:700;background:#fff;padding:8px 11px;margin:0}.ship-pending{color:#c65b16;border:2px solid #ed7b31}.ship-done{color:#55716b;background:#edf4f2;border:1px solid #cbdcd7}.pay-pending{color:#16704a;border:2px solid #36a36f}.pay-done{color:#6d7471;background:#f0f1f0;border:1px solid #d5d8d6}.order-total{text-align:right;color:#707a76}.order-total b{display:block;color:#173d38;font-size:22px}.empty-orders{text-align:center;color:#777;padding:30px}@media(max-width:650px){body{padding:12px}.stats{grid-template-columns:1fr 1fr}.item{grid-template-columns:1fr 1fr}.order-card{padding:14px}.order-head{align-items:flex-start}.card-actions button{min-height:40px}.order-foot{align-items:stretch;flex-direction:column}.order-total{text-align:left}.row>input,.row>select{flex:1;min-width:130px}}</style>
 <style>
@@ -42,7 +42,7 @@ body{font-size:14px}h1{font-size:24px}h2{font-size:19px;margin:8px 0}.stats{gap:
 <button id="logout">登出</button>
 </div>
 </header>
-<p id="appVersion" class="management-help">程式版本：20261118-integrated5</p>
+<p id="appVersion" class="management-help">程式版本：20261119-finance1</p>
 <section id="auth" class="card">
 <h2>登入</h2>
 <input id="email" type="email" placeholder="Email">
@@ -206,7 +206,7 @@ window.openOrder=openOrder;["search","sf","pf"].forEach(x=>$(x).oninput=render);
 function resetProductForm(){$("productForm").reset();$("peid").value="";$("productSubmit").textContent="新增商品";$("productCancel").classList.add("hidden")}
 function renderProducts(){$("plist").innerHTML=Object.entries(products).map(([id,p])=>`<div class="product-manage-row ${p.active===false?"inactive-product":""}"><div class="product-manage-info"><b>${esc(p.name)}</b>｜${money(p.price)}${p.active===false?'<span class="inactive-badge">已下架</span>':""}</div><div class="product-manage-actions"><button type="button" onclick="editProduct('${id}')">編輯</button><button type="button" onclick="toggleProduct('${id}',${p.active===false?'true':'false'})">${p.active===false?"重新上架":"下架"}</button><button type="button" class="danger" onclick="removeP('${id}')">刪除</button></div></div>`).join("")}window.editProduct=id=>{let p=products[id];if(!p)return;$("peid").value=id;$("pname").value=p.name||"";$("pprice").value=+p.price||0;$("productSubmit").textContent="儲存修改";$("productCancel").classList.remove("hidden");$("pname").focus()};$("products").onclick=()=>{resetProductForm();openActionDialog('pd')};$("productCancel").onclick=resetProductForm;document.querySelectorAll(".close").forEach(x=>x.onclick=()=>closeActionDialog(x.closest('dialog').id));$("operator").value=readOperator();
 </script>
-<script src="management-core.js?v=20261118-integrated5"></script>
-<script src="management.js?v=20261118-integrated5"></script>
+<script src="management-core.js?v=20261119-finance1"></script>
+<script src="management.js?v=20261119-finance1"></script>
 </body>
 </html>

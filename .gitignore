@@ -1,0 +1,13 @@
+# Local source backups (never remove local files)
+/backups/
+
+# Firebase Realtime Database business-data exports
+/**/*-rtdb-export*.json
+
+# Generated test results and previews; keep test source files visible
+/tests/*-results.json
+/tests/*-release-manifest.json
+/tests/*-preview.png
+
+# Historical website ZIP backups
+/快樂蝦農_*.zip

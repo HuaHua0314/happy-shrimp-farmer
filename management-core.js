@@ -113,6 +113,109 @@ function report(orders,expenses,start,end){
  const expense=Object.values(expenses).filter(e=>e.date>=firstExpenseDate&&e.date<lastExpenseDate).reduce((s,e)=>s+(+e.amount||0),0);
  return {count:chosen.length,packs,shipped,unshipped:packs-shipped,ordered,paid,unpaid,cash,expense,net:cash-expense,unknownCount:unknown.length,unknownAmount:unknown.reduce((s,o)=>s+total(o),0),sales:Object.values(sales).sort((a,b)=>b.qty-a.qty)};
 }
-root.ShrimpCore={version:'20261118-integrated5',hasOwn,items,total,sameItems,quantities,identity,validLast3,resolveCustomer,customerIndex,customerCandidates,searchCustomers,taipeiDate,updateCustomerProfile,applyCustomerOrder,mergeCustomers,undoCustomerMerge,applyOrder,report};
+// Finance is isolated from orders/customers/inventory. All money is integer cents.
+const clone=v=>JSON.parse(JSON.stringify(v));
+function scaled(value,digits,label='數值'){
+ const s=String(value??'').trim(),m=s.match(/^(\d+)(?:\.(\d+))?$/);
+ if(!m||(m[2]||'').length>digits)throw Error(label+'格式錯誤，最多 '+digits+' 位小數');
+ const n=Number(m[1])*10**digits+Number((m[2]||'').padEnd(digits,'0'));
+ if(!Number.isSafeInteger(n)||n>100000000000)throw Error(label+'超出安全範圍');return n;
+}
+function integer(n,label='數值'){if(!Number.isSafeInteger(n)||n<0||n>100000000000)throw Error(label+'超出安全範圍');return n}
+function roundedProduct(a,b,divisor=1000){const n=integer(a)*integer(b);if(!Number.isSafeInteger(n)||!Number.isSafeInteger(divisor)||divisor<=0)throw Error('乘積超出安全範圍');return integer(Math.floor(n/divisor)+(n%divisor>=Math.ceil(divisor/2)?1:0));}
+const validDate=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s+'T00:00:00Z'))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;
+const validStamp=t=>(typeof t==='number'||typeof t==='string'&&/^\d{1,15}$/.test(t))&&Number.isSafeInteger(Number(t))&&Number(t)>0&&Number(t)<253402185600000;
+function requireDate(s,label){if(!validDate(s))throw Error('請輸入有效'+label);return s}
+function cleanText(v,label,required=false){const s=String(v??'').trim();if((required&&!s)||s.length>2000)throw Error(label+'未填或過長');return s}
+function financePurchase(d){
+ const mode=d.mode;if(!['simple','detailed'].includes(mode))throw Error('記帳模式錯誤');
+ const lines={};let subtotalCents=0;const source=Object.entries(d.items||{});if(!source.length||source.length>100)throw Error('採購需有 1 至 100 個品項');
+ for(const [id,line] of source){if(!/^[A-Za-z0-9_-]+$/.test(id))throw Error('品項 ID 錯誤');
+  const name=cleanText(line.name,'品項名稱',true),categoryId=cleanText(line.categoryId,'分類',true);
+  const quantityMilli=mode==='simple'?1000:scaled(line.quantity,3,'數量');if(!quantityMilli)throw Error('數量須大於零');
+  const unitPriceCents=scaled(line.unitPrice,2,'單價'),amount=roundedProduct(quantityMilli,unitPriceCents);if(!amount)throw Error('品項小計須大於零');
+  const shrimp=!!line.shrimp,weightMilliCatty=shrimp?scaled(line.weightCatty,3,'蝦子台斤重量'):0;if(shrimp&&!weightMilliCatty)throw Error('外購蝦須記錄台斤重量');
+  lines[id]={name,categoryId,quantityMilli,unit:cleanText(line.unit,'單位'),unitPriceCents,subtotalCents:amount,shrimp,weightMilliCatty};subtotalCents=integer(subtotalCents+amount);
+ }
+ if(mode==='simple'&&source.length!==1)throw Error('簡單記帳只能有一個品項');
+ const shippingCents=scaled(d.shipping||'0',2,'自付採購運費'),totalCents=integer(subtotalCents+shippingCents);
+ const status=d.paymentStatus;if(!['unpaid','paid'].includes(status))throw Error('只支援未付款或全額付款');
+ const purchaseDate=requireDate(d.purchaseDate,'採購日期'),paidDate=status==='paid'?requireDate(d.paidDate,'付款日期'):'';
+ return {schemaVersion:1,scope:'mealPacks',mode,purchaseDate,items:lines,subtotalCents,shippingCents,totalCents,payment:{version:1,status,paidCents:status==='paid'?totalCents:0,paidDate},merchant:cleanText(d.merchant,'商家'),notes:cleanText(d.notes,'備註'),status:'active'};
+}
+function financeShrimp(d,finance){
+ const sourceType=d.sourceType;if(!['own','purchased'].includes(sourceType))throw Error('請選擇蝦子來源');
+ const weightMilliCatty=scaled(d.weightCatty,3,'台斤重量');if(!weightMilliCatty)throw Error('重量須大於零');
+ let unitCostCents=sourceType==='own'?scaled(d.unitCost||'0',2,'每台斤成本'):0,estimatedCostCents=roundedProduct(weightMilliCatty,unitCostCents),purchaseId='',lineId='';
+ if(sourceType==='purchased'){
+  purchaseId=cleanText(d.purchaseId,'原採購',true);lineId=cleanText(d.lineId,'採購品項',true);const p=finance.purchases?.[purchaseId],line=p?.items?.[lineId];
+  if(!p||p.status!=='active'||!line?.shrimp||!line.weightMilliCatty)throw Error('外購蝦必須關聯有效蝦子採購品項');
+  // Informational cost only. The purchase is already included in C/D.
+  estimatedCostCents=roundedProduct(weightMilliCatty,line.subtotalCents,line.weightMilliCatty);
+  unitCostCents=roundedProduct(1000,line.subtotalCents,line.weightMilliCatty);
+ }else if(!unitCostCents)throw Error('請填寫大於零的每台斤成本');
+ const packs=d.packs===''||d.packs==null?null:Number(d.packs);if(packs!==null&&(!Number.isSafeInteger(packs)||packs<=0))throw Error('製作包數須為正整數或留白');
+ return {schemaVersion:1,scope:'mealPacks',date:requireDate(d.date,'製作日期'),productId:cleanText(d.productId,'料理包品項',true),productName:cleanText(d.productName,'商品名稱',true),sourceType,weightMilliCatty,unitCostCents,estimatedCostCents,purchaseId,lineId,...(packs===null?{}:{packs}),gramsPerCatty:600,notes:cleanText(d.notes,'備註'),status:'active'};
+}
+function financeReferences(f){
+ const used={};for(const s of Object.values(f.shrimpCosts||{})){if(s.status!=='active'||s.sourceType!=='purchased')continue;const p=f.purchases?.[s.purchaseId],line=p?.items?.[s.lineId];if(!p||p.status!=='active'||!line?.shrimp)throw Error('採購已被蝦子製作成本引用，請先作廢關聯紀錄');const key=s.purchaseId+':'+s.lineId;used[key]=(used[key]||0)+s.weightMilliCatty;if(used[key]>line.weightMilliCatty)throw Error('關聯蝦子重量超過原採購重量');}
+}
+function applyFinance(current,command,actor,now){
+ const f=clone(current||{}),{operation,id,kind,expected}=command;if(!operation||!id||!['purchase','shrimp','category','legacy'].includes(kind))throw Error('財務操作格式錯誤');
+ const request=clone({kind,id,action:command.action||'save',...(command.data?{data:command.data}:{}),...(command.status?{status:command.status}:{}),...(command.legacySnapshot?{legacySnapshot:command.legacySnapshot}:{})});
+ if(f.operations?.[operation]){if(!equal(f.operations[operation].request,request))throw Error('先前操作已儲存，但重試內容不同；請從清單查看後編輯，不要重新新增');return f;}
+ const bucket={purchase:'purchases',shrimp:'shrimpCosts',category:'categories',legacy:'legacyExpenseOverrides'}[kind],old=f[bucket]?.[id]||null;
+ if(!equal(old,expected||null))throw Error('此筆資料已被其他裝置修改，請重新開啟');
+ let next;
+ if(command.action==='status'){
+  if(!old||!['active','void'].includes(command.status))throw Error('狀態錯誤');next={...old,status:command.status};
+ }else if(kind==='purchase')next=financePurchase(command.data);
+ else if(kind==='shrimp')next=financeShrimp(command.data,f);
+ else if(kind==='category')next={name:cleanText(command.data.name,'分類名稱',true),status:command.data.status==='void'?'void':'active',scope:'mealPacks'};
+ else {
+  // Overlay holds a complete effective replacement; the original expense remains untouched.
+  if(!command.legacySnapshot)throw Error('找不到舊支出快照');next={...financePurchase(command.data),legacySnapshot:clone(command.legacySnapshot)};
+ }
+ if(kind==='purchase'&&old){for(const s of Object.values(f.shrimpCosts||{}))if(s.status==='active'&&s.sourceType==='purchased'&&s.purchaseId===id&&!equal(old.items?.[s.lineId],next.items?.[s.lineId]))throw Error('採購品項已有製作關聯，請先作廢關聯紀錄再修改');}
+ next={...(old||{}),...next,...(old&&command.action!=='status'&&kind!=='category'?{status:old.status}:{}),revision:(old?.revision||0)+1,createdAt:old?.createdAt||now,updatedAt:now,operator:actor};
+ if(kind==='category'&&Object.entries(f.categories||{}).some(([key,c])=>key!==id&&c.status!=='void'&&norm(c.name)===norm(next.name)))throw Error('已有相同名稱的料理包分類');
+ f[bucket]||={};f[bucket][id]=next;financeReferences(f);f.operations||={};f.operations[operation]={kind,id,action:command.action||'save',request,before:old,after:clone(next),operator:actor,date:now};return f;
+}
+function financeEntries(legacy={},f={}){
+ const out=[];for(const [id,e] of Object.entries(legacy)){const overlay=f.legacyExpenseOverrides?.[id];if(overlay){out.push({...overlay,...(!equal(e,overlay.legacySnapshot)?{totalCents:null}:{}),id:'legacy:'+id,source:'legacy',sourceId:id});continue;}
+  let cents=null;try{cents=scaled(e.amount,2,'舊支出金額')}catch(_){}
+  const payment=e.payment?.status==='paid'||e.paid===true?'paid':e.payment?.status==='unpaid'||e.paid===false?'unpaid':'unknown';
+  const pd=e.payment?.paidDate||e.paidDate||(validStamp(e.paidAt)?taipeiDate(Number(e.paidAt)):'');
+  out.push({id:'legacy:'+id,sourceId:id,source:'legacy',status:'active',scope:e.scope||'mealPacks',purchaseDate:e.date,title:e.title||'舊支出',totalCents:cents,items:{legacy:{name:e.title||'舊支出',categoryId:e.categoryId||'',category:e.category||'',subtotalCents:cents}},shippingCents:0,payment:{status:payment,paidDate:validDate(pd)?pd:'',paidCents:payment==='paid'?cents:0},notes:e.notes||'',operator:e.operator||'',legacySnapshot:e});
+ }
+ for(const [id,p] of Object.entries(f.legacyExpenseOverrides||{}))if(!hasOwn(legacy,id))out.push({...p,totalCents:null,id:'legacy:'+id,source:'legacy',sourceId:id});
+ for(const [id,p] of Object.entries(f.purchases||{}))out.push({...p,id:'finance:'+id,source:'finance',sourceId:id});return out;
+}
+function goodsCents(o){
+ try{const lines=items(o);if(!lines.length)return null;let n=0;for(const i of lines){const q=scaled(i.qty,3,'商品數量'),p=scaled(i.unitPrice,2,'成交單價');n=integer(n+roundedProduct(q,p));}
+  if(o.amount!==undefined&&o.amount!==null&&o.amount!==''){const a=scaled(o.amount,2,'原總額');if(a!==n){const fee=o.shippingFee;if(fee===undefined||a!==n+scaled(fee,2,'配送運費'))return null;}}
+  return n;
+ }catch(_){return null;}
+}
+function financeReport(orders,legacy,f,startDate,endDate){
+ requireDate(startDate,'開始日期');requireDate(endDate,'結束日期');if(endDate<startDate)throw Error('日期區間錯誤');
+ const inside=d=>validDate(d)&&d>=startDate&&d<=endDate,stamp=t=>validStamp(t)?taipeiDate(Number(t)):'';
+ const r={A:0,B:0,C:0,D:0,E:0,count:0,packs:0,shipped:0,unpaid:0,paid:0,unknownCount:0,unknownAmount:0,unresolvedOrders:0,unresolvedOrderAmount:0,unknownCreated:0,purchasePaid:0,purchaseUnpaid:0,purchaseUnknown:0,unknownExpensePayments:0,unknownExpensePaymentAmount:0,invalidExpenses:0,externalShrimp:0,sales:[],warnings:[]},sales={};
+ for(const o of Object.values(orders||{})){const chosen=inside(stamp(o.createdAt)),g=goodsCents(o),paid=o.paid===true||o.paid===1,pd=stamp(o.paidAt);if(!validStamp(o.createdAt))r.unknownCreated++;
+  if(g===null){r.unresolvedOrders++;const amount=Number(o.amount);if(Number.isFinite(amount))r.unresolvedOrderAmount+=amount;continue;}
+  if(chosen){r.count++;r.A+=g;if(paid)r.paid+=g;else r.unpaid+=g;for(const i of items(o)){const qty=+i.qty||0,gift=+i.gift||0;r.packs+=qty+gift;if(o.shipped)r.shipped+=qty+gift;const key=i.productId||'legacy:'+i.productName,row=sales[key]||={name:i.productName||'歷史商品',qty:0,gift:0,revenue:0};row.qty+=qty;row.gift+=gift;row.revenue+=roundedProduct(scaled(i.qty,3),scaled(i.unitPrice,2))/100;}}
+  if(paid){if(!pd){r.unknownCount++;r.unknownAmount+=g}else if(inside(pd))r.B+=g;}
+ }
+ for(const p of financeEntries(legacy,f)){if(p.status==='void'||p.scope!=='mealPacks')continue;if(!validDate(p.purchaseDate)||!Number.isSafeInteger(p.totalCents)){r.invalidExpenses++;continue;}const pay=p.payment||{};if(inside(p.purchaseDate)){r.C+=p.totalCents;if(pay.status==='paid')r.purchasePaid+=p.totalCents;else if(pay.status==='unpaid')r.purchaseUnpaid+=p.totalCents;else r.purchaseUnknown+=p.totalCents;}
+  if(pay.status==='paid'){if(!validDate(pay.paidDate)){r.unknownExpensePayments++;r.unknownExpensePaymentAmount+=p.totalCents}else if(inside(pay.paidDate))r.D+=p.totalCents;}
+ }
+ for(const s of Object.values(f.shrimpCosts||{})){if(s.status!=='active'||!inside(s.date))continue;if(s.sourceType==='own')r.E+=s.estimatedCostCents;else r.externalShrimp+=s.estimatedCostCents;}
+ r.estimated=(r.A-r.C-r.E)/100;r.comparison=(r.B-r.D-r.E)/100;r.cashBalance=(r.B-r.D)/100;
+ for(const key of ['A','B','C','D','E','unpaid','paid','unknownAmount','purchasePaid','purchaseUnpaid','purchaseUnknown','unknownExpensePaymentAmount','externalShrimp'])r[key]/=100;
+ r.sales=Object.values(sales).map(s=>({...s,revenue:Math.round(s.revenue*100)/100})).sort((a,b)=>b.qty-a.qty);r.unshipped=r.packs-r.shipped;
+ return r;
+}
+function csvText(rows){return '\uFEFF'+rows.map(row=>row.map(v=>'"'+(typeof v==='string'?v.replace(/^[\s]*[=+@\-]/,"'$&"):String(v??'')).replace(/"/g,'""')+'"').join(',')).join('\r\n');}
+root.ShrimpCore={version:'20261119-finance1',equalLegacy:equal,hasOwn,items,total,sameItems,quantities,identity,validLast3,resolveCustomer,customerIndex,customerCandidates,searchCustomers,taipeiDate,updateCustomerProfile,applyCustomerOrder,mergeCustomers,undoCustomerMerge,applyOrder,report,scaled,roundedProduct,validDate,financePurchase,financeShrimp,applyFinance,financeEntries,goodsCents,financeReport,csvText};
 if(typeof module!=='undefined')module.exports=root.ShrimpCore;
 })(globalThis);

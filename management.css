@@ -8,10 +8,11 @@
 
 #od{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;overflow-x:hidden}
 
-:root{--shrimp-release:20261118-integrated5}
+:root{--shrimp-release:20261119-finance1}
 #orderClearCustomer{min-height:40px;font-size:13px;max-width:100%;white-space:normal}
 
 #od[open],#pd[open],#customerDialog[open],#customerMatchDialog[open],#customerMergeDialog[open]{position:fixed;top:var(--shrimp-dialog-top,12px);bottom:auto;left:0;right:0;margin:0 auto;max-height:var(--shrimp-dialog-height,calc(100vh - 24px));overflow-y:auto;overflow-x:hidden}
 #of>.row.between,#productForm>.row.between{position:sticky;top:-1px;z-index:2;background:#fff8ee;padding:3px 0}#of>button.primary,#customerEdit>button[type=submit],#productSubmit{position:sticky;bottom:0;z-index:2}dialog button{min-height:40px}#orderClearCustomer.hidden{display:none}
 
 dialog:not([open]){display:none}#od.dialog-fallback,#pd.dialog-fallback{z-index:1000;box-shadow:0 0 0 100vmax #173d3866}
+.finance-line-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.purchase-line{min-width:0}.purchase-line input,.purchase-line select{min-width:0;width:100%}#panel-expenses input[type=checkbox]{width:auto;min-height:0}#panel-expenses .hidden{display:none}#panel-expenses button{min-height:40px;white-space:normal;max-width:100%}#financeOperations pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}#expenseForm,#shrimpForm{scroll-margin-top:70px}#expenseForm>.primary,#shrimpForm>.primary{position:sticky;bottom:4px;z-index:2}#expenseTotal,#shrimpTotal{overflow-wrap:anywhere}#panel-expenses .row>label{min-width:0}@media(max-width:420px){.finance-line-grid{grid-template-columns:1fr 1fr}.finance-line-grid>label:last-child{grid-column:1/-1}}
