@@ -4,7 +4,7 @@ const hasOwn=(value,key)=>Object.prototype.hasOwnProperty.call(value,key);
 const items=o=>Array.isArray(o?.items)?o.items:Object.values(o?.items|| (o?.productId?{legacy:o}:{}));
 const total=o=>o?.amount!==undefined&&o.amount!==null&&o.amount!==''&&Number.isFinite(Number(o.amount))?Number(o.amount):items(o).reduce((s,i)=>s+(+i.qty||0)*(+i.unitPrice||0),0);
 const sameItems=(a,b)=>JSON.stringify(items(a).map(i=>[i.productId,i.productName,+i.unitPrice||0,+i.qty||0,+i.gift||0]))===JSON.stringify(items(b).map(i=>[i.productId,i.productName,+i.unitPrice||0,+i.qty||0,+i.gift||0]));
-const quantities=o=>items(o).reduce((a,i)=>{if(!i.productId)throw Error('商品缺少穩定 ID，請先確認此訂單商品');a[i.productId]=(a[i.productId]||0)+(+i.qty||0)+(+i.gift||0);return a},{});
+const quantities=o=>items(o).reduce((a,i)=>{if(!i.productId)throw Error('商品缺少穩定 ID，請先確認此訂單商品');const q=Number(i.qty||0),g=Number(i.gift||0);if(!Number.isSafeInteger(q)||!Number.isSafeInteger(g)||q<0||g<0||!Number.isSafeInteger((a[i.productId]||0)+q+g))throw Error('商品及贈品包數必須為非負安全整數');a[i.productId]=(a[i.productId]||0)+q+g;return a},{});
 const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value;
 const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 const norm=s=>String(s||'').trim().toLowerCase();
@@ -49,7 +49,7 @@ function searchCustomers(list,query,profiles={}){
 }
 // Customer selection/profile enrichment and the order commit atomically. No legacy orders are rewritten.
 function applyCustomerOrder(state,id,next,expected,operation,actor,now,selection){
- if(state?.inventoryOperations?.[operation])return state;
+ if(state?.inventoryOperations?.[operation])return applyOrder(state,id,next,expected,operation,actor,now);
  if(next&&!expected){
   if(!String(next.customer||'').trim())throw Error('請填寫客戶姓名');
   if(next.phoneLast3&&!validLast3(next.phoneLast3))throw Error('手機後三碼請填 3 位數字，或留白稍後補填');
@@ -80,28 +80,69 @@ function undoCustomerMerge(state,operation,actor,now){
  if(state.customerAliases?.[h.sourceId]!==h.targetId||resolveCustomer(h.targetId,state.customerAliases)!==h.targetId)throw Error('有後續合併或對照已變更，請先依相反順序解除');
  const n=JSON.parse(JSON.stringify(state));delete n.customerAliases[h.sourceId];n.customerMergeHistory[operation]={...h,status:'reversed',reversedBy:actor,reversedAt:now};return n;
 }
-// Applied inside a single transaction at users/{uid}. Existing shipped orders have no ledger.
-function applyOrder(state,id,next,expected,operation,actor,now){
- if(!state)throw Error('尚未取得伺服器資料');
- if(state.inventoryOperations?.[operation])return state;
- const old=state.orders?.[id]||null;
- if(!equal(old,expected))throw Error('此訂單已被其他裝置更新，請重新開啟後再操作');
- const s=JSON.parse(JSON.stringify(state)),inv=s.inventory;
- if(inv?.initializedAt){
-  const prior=inv.orderLedger?.[id]||{},desired=next?.shipped?quantities(next):{};
-  // A legacy order already shipped before baseline is exempt until explicitly unshipped.
-  const exempt=old?.shipped&&!inv.orderLedger?.[id];
-  const target=exempt&&next?.shipped?{}:desired;
-  const ids=new Set([...Object.keys(prior),...Object.keys(target)]);
-  for(const pid of ids){const delta=(+prior[pid]||0)-(+target[pid]||0);if(!delta)continue;
-   if(!inv.stock||!hasOwn(inv.stock,pid))throw Error('此商品尚未盤點，請先補登庫存：'+pid);
-   inv.stock[pid]+=delta;
-   s.inventoryMovements||={};s.inventoryMovements[operation+'_'+pid]={productId:pid,quantity:delta,reason:next?'訂單出貨／調整':'刪除訂單還原',orderId:id,operator:actor,date:now};
-  }
-  inv.orderLedger||={};if(next?.shipped&&!exempt)inv.orderLedger[id]=target;else delete inv.orderLedger[id];
+// Inventory v2: atomic root transactions; old orders are never migrated or rewritten.
+function inventoryDemandIssues(orders,inv={}){const issues=[];for(const [id,o] of Object.entries(orders||{}))if(!o.shipped&&!inv.orderStates?.[id]?.cancelled){try{quantities(o)}catch(e){issues.push({orderId:id,message:e.message})}}return issues}
+const inventoryDemand=(orders,inv={})=>{const out={};for(const [id,o] of Object.entries(orders||{}))if(!o.shipped&&!inv.orderStates?.[id]?.cancelled)for(const item of items(o)){try{for(const [p,n] of Object.entries(quantities({items:[item]})))out[p]=(out[p]||0)+n}catch(_){/* Visible unresolved-demand notice; never invent a product ID. */}}return out};
+const packCount=(v,zero=false)=>{const n=Number(v);if(v===''||v===null||v===undefined||!Number.isSafeInteger(n)||n<(zero?0:1))throw Error('包數必須為安全範圍內的'+(zero?'非負':'正')+'整數');return n};
+function inventoryStats(inv,start,end){const daily={},products={};for(const r of Object.values(inv?.receipts||{})){if(r.status!=='active'||r.kind!=='production'||r.date<start||r.date>end)continue;for(const l of Object.values(r.lines||{})){const d=daily[r.date]||={},p=products[l.productId]||={productId:l.productId,name:l.productName,quantity:0};d[l.productId]=(d[l.productId]||0)+l.quantity;p.quantity+=l.quantity}}return {daily,products:Object.values(products)}}
+function inventoryMove(s,key,pid,delta,kind,actor,now,extra={},repair=false){const inv=s.inventory;inv.stock||={};const current=Number(inv.stock[pid]);if(!hasOwn(inv.stock,pid)||!Number.isSafeInteger(current)||current<0&&!repair)throw Error('此商品尚未盤點或庫存待核對：'+pid);const result=current+delta;if(!Number.isSafeInteger(result)||result<0)throw Error('庫存不足，請先補登入庫：'+pid);inv.stock[pid]=result;s.inventoryMovements||={};s.inventoryMovements[key]={productId:pid,quantity:delta,before:current,after:result,reason:kind,operator:actor,date:now,...extra}}
+function applyInventory(state,request,operation,actor,now){
+ if(!state)throw Error('尚未取得伺服器資料');const fingerprint=JSON.stringify(canonical(request)),prior=state.inventoryOperations?.[operation];if(prior){if(prior.fingerprint!==fingerprint)throw Error('此操作已完成，請重新開啟表單');return state}
+ const s=JSON.parse(JSON.stringify(state));s.inventory||={};const inv=s.inventory,d=request;
+ if(d.kind==='activate'){
+  if(inv.initializedAt||inv.activation)throw Error('庫存已啟用，不可重複設定或覆蓋');if(Object.keys(inv.orderLedger||{}).length||Object.keys(s.inventoryMovements||{}).length)throw Error('已有庫存異動但缺少期初基準，請先核對，不可重新初始化');
+  const ids=new Set([...Object.keys(s.products||{}),...Object.values(s.orders||{}).flatMap(o=>items(o).map(i=>i.productId).filter(Boolean)),...Object.keys(inv.stock||{})]);
+  if(!ids.size||JSON.stringify([...ids].sort())!==JSON.stringify(Object.keys(d.stock||{}).sort()))throw Error('商品已更新，請重新確認所有商品盤點');
+  inv.stock={};for(const id of ids){inv.stock[id]=packCount(d.stock[id],true);s.inventoryMovements||={};s.inventoryMovements[operation+'_'+id]={productId:id,quantity:inv.stock[id],reason:'期初盤點（非製作）',operator:actor,date:now}}
+  inv.initializedAt=now;inv.initializedBy=actor;inv.activation={version:2,status:'active',date:now,operator:actor};inv.orderLedger||={};inv.legacyExempt={};for(const [id,o] of Object.entries(s.orders||{}))if(o.shipped){inv.legacyExempt[id]=true;inv.everShipped||={};inv.everShipped[id]=true;}
+ }else{
+  if(!inv.initializedAt)throw Error('請先完成期初盤點；目前暫停出貨與庫存異動');
+  if(d.kind==='receipt'){
+   inv.receipts||={};const old=inv.receipts[d.id]||null;if(!equal(old,d.expected||null))throw Error('此入庫紀錄已被其他裝置修改，請重新開啟');
+   if(old?.status==='void')throw Error('已作廢紀錄不可再修改');
+   if(!['production','inbound'].includes(d.type)||!validDate(d.date))throw Error('請填寫有效日期與入庫類型');
+   if(d.date>taipeiDate(Number(now)||Date.now()))throw Error('製作／入庫日期不可晚於今天');
+   if(d.date<taipeiDate(Number(inv.initializedAt)||Date.now()))throw Error('啟用前製作可能已含期初庫存，不可重複入庫');
+   const lines={};for(const [i,l] of (d.lines||[]).entries()){if(!s.products?.[l.productId]&&!hasOwn(inv.stock||{},l.productId))throw Error('商品不存在');if(!hasOwn(inv.stock||{},l.productId))throw Error('新商品請先盤點目前實際庫存');lines['l'+i]={productId:l.productId,productName:Object.values(old?.lines||{}).find(x=>x.productId===l.productId)?.productName||s.products?.[l.productId]?.name||l.productId,quantity:packCount(l.quantity)}}
+   if(!Object.keys(lines).length)throw Error('請至少新增一個商品');
+   const before={},after={};if(old?.status==='active')for(const l of Object.values(old.lines))before[l.productId]=(before[l.productId]||0)+l.quantity;
+   if(!d.void)for(const l of Object.values(lines))after[l.productId]=(after[l.productId]||0)+l.quantity;
+   for(const pid of new Set([...Object.keys(before),...Object.keys(after)])){const delta=(after[pid]||0)-(before[pid]||0);if(delta)inventoryMove(s,operation+'_'+pid,pid,delta,d.void?'入庫作廢沖銷':'製作／入庫差額',actor,now,{receiptId:d.id})}
+   inv.receipts[d.id]={kind:d.type,date:d.date,lines,notes:String(d.notes||'').trim(),status:d.void?'void':'active',revision:(old?.revision||0)+1,createdAt:old?.createdAt||now,updatedAt:now,operator:actor};
+  }else if(d.kind==='adjust'){
+   const pid=d.productId;if(!s.products?.[pid]&&!hasOwn(inv.stock||{},pid))throw Error('商品不存在');if(!equal(inv.stock?.[pid]??null,d.expected??null))throw Error('庫存已被其他裝置修改，請重新確認盤點');
+   if(!String(d.reason||'').trim())throw Error('請填寫調整原因');
+   if(d.mode==='count'){const target=packCount(d.quantity,true);if(!hasOwn(inv.stock||{},pid)){inv.stock||={};inv.stock[pid]=0}inventoryMove(s,operation,pid,target-inv.stock[pid],'盤點修正：'+d.reason,actor,now,{},true)}
+   else{const qty=Number(d.quantity);if(!Number.isSafeInteger(qty)||!qty)throw Error('請輸入非零整數包數');inventoryMove(s,operation,pid,qty,'庫存調整：'+d.reason,actor,now)}
+  }else if(['cancel','reopen','return'].includes(d.kind)){
+   const o=s.orders?.[d.orderId];if(!o||!equal(o,d.expected))throw Error('訂單已變更，請重新開啟');
+   inv.orderStates||={};if(!equal(inv.orderStates[d.orderId]||null,d.expectedState||null))throw Error('取消狀態已變更，請重新確認');
+   if(d.kind==='return'){
+    if(!o.shipped||d.confirmed!==true)throw Error('必須確認退貨已實際放回冷凍庫且可再販售');
+    inv.returned||={};const returned=inv.returned[d.orderId]||{};if(!equal(returned,d.expectedReturned||{}))throw Error('退貨紀錄已變更，請重新確認');const shipped=quantities(o);let count=0;
+    for(const [pid,raw] of Object.entries(d.quantities||{})){const q=packCount(raw,true);if(!q)continue;if(q>(shipped[pid]||0)-(returned[pid]||0))throw Error('退回數量超過可退包數');inventoryMove(s,operation+'_'+pid,pid,q,'確認實際退貨入庫',actor,now,{orderId:d.orderId});returned[pid]=(returned[pid]||0)+q;if(inv.orderLedger?.[d.orderId])inv.orderLedger[d.orderId][pid]=Math.max(0,(inv.orderLedger[d.orderId][pid]||0)-q);count+=q}
+    if(!count)throw Error('請輸入至少一包實際回庫商品');inv.returned[d.orderId]=returned;inv.returns||={};inv.returns[operation]={orderId:d.orderId,quantities:d.quantities,reason:String(d.reason||''),operator:actor,date:now};
+   }else inv.orderStates[d.orderId]={cancelled:d.kind==='cancel',reason:String(d.reason||''),operator:actor,date:now};
+  }else throw Error('未知庫存操作');
  }
- s.orders||={};if(next)s.orders[id]=next;else delete s.orders[id];
- s.inventoryOperations||={};s.inventoryOperations[operation]={date:now,operator:actor};return s;
+ s.inventoryOperations||={};s.inventoryOperations[operation]={fingerprint,request:d,operator:actor,date:now};return s;
+}
+function applyOrder(state,id,next,expected,operation,actor,now,options={}){
+ if(!state)throw Error('尚未取得伺服器資料');const fingerprint=JSON.stringify(canonical({id,next}));if(state.inventoryOperations?.[operation]){if(state.inventoryOperations[operation].orderFingerprint!==fingerprint)throw Error('訂單操作已完成，請重新查看，不可用同一操作改送其他內容');return state;}
+ const old=state.orders?.[id]||null;if(!equal(old,expected))throw Error('此訂單已被其他裝置更新，請重新開啟後再操作');
+ const s=JSON.parse(JSON.stringify(state)),inv=s.inventory;
+ if(!next&&(old?.shipped||inv?.everShipped?.[id]||inv?.orderStates?.[id]))throw Error('已出貨或取消的訂單不可直接刪除，請使用取消／退貨並保留紀錄');
+ if(next&&!!next.shipped!==!!old?.shipped&&!inv?.initializedAt)throw Error('請先完成期初盤點，目前暫停出貨');
+ if(inv?.orderStates?.[id]?.cancelled&&next&&(next.shipped!==old?.shipped||!sameItems(old,next)))throw Error('此訂單已取消，請先恢復接單再變更出貨或品項');
+ if(inv?.initializedAt){
+  const prior=inv.orderLedger?.[id]||{},desired=next?.shipped?quantities(next):{},returned=inv.returned?.[id]||{};
+  const exempt=!!old?.shipped&&(inv.legacyExempt?.[id]||!hasOwn(inv.orderLedger||{},id));
+  if(exempt&&next?.shipped&&!equal(quantities(old),desired))throw Error('期初前已出貨訂單不可直接變更包數，請保留原單並另行記錄');
+  const target={};if(!exempt)for(const [pid,q] of Object.entries(desired)){if(q<(returned[pid]||0))throw Error('商品包數不得少於已退回數量');target[pid]=q-(returned[pid]||0)}
+  for(const pid of new Set([...Object.keys(prior),...Object.keys(target)])){const delta=(prior[pid]||0)-(target[pid]||0);if(!delta)continue;if(delta>0&&options.stockReturned!==true)throw Error('減少已出貨包數前，必須確認商品實際放回冷凍庫');inventoryMove(s,operation+'_'+pid,pid,delta,'訂單出貨／確認回庫調整',actor,now,{orderId:id})}
+  inv.orderLedger||={};inv.everShipped||={};if(old?.shipped)inv.everShipped[id]=true;if(next?.shipped){inv.everShipped[id]=true;if(!exempt)inv.orderLedger[id]=target}else{delete inv.orderLedger[id];if(inv.legacyExempt)delete inv.legacyExempt[id];if(inv.returned)delete inv.returned[id]}
+ }
+ s.orders||={};if(next)s.orders[id]=next;else delete s.orders[id];s.inventoryOperations||={};s.inventoryOperations[operation]={date:now,operator:actor,orderFingerprint:fingerprint};return s;
 }
 function report(orders,expenses,start,end){
  const inside=t=>Number(t)>=start&&Number(t)<end;
@@ -223,6 +264,6 @@ function financeReport(orders,legacy,f,startDate,endDate){
  return r;
 }
 function csvText(rows){return '\uFEFF'+rows.map(row=>row.map(v=>'"'+(typeof v==='string'?v.replace(/^[\s]*[=+@\-]/,"'$&"):String(v??'')).replace(/"/g,'""')+'"').join(',')).join('\r\n');}
-root.ShrimpCore={version:'20261120-mobile1',equalLegacy:equal,hasOwn,items,total,sameItems,quantities,identity,validLast3,resolveCustomer,customerIndex,customerCandidates,searchCustomers,taipeiDate,updateCustomerProfile,applyCustomerOrder,mergeCustomers,undoCustomerMerge,applyOrder,report,scaled,roundedProduct,validDate,financePurchase,financeShrimp,applyFinance,financeEntries,goodsCents,financeReport,csvText};
+root.ShrimpCore={version:'20261120-inventory1',equalLegacy:equal,hasOwn,items,total,sameItems,quantities,inventoryDemand,inventoryDemandIssues,inventoryStats,applyInventory,identity,validLast3,resolveCustomer,customerIndex,customerCandidates,searchCustomers,taipeiDate,updateCustomerProfile,applyCustomerOrder,mergeCustomers,undoCustomerMerge,applyOrder,report,scaled,roundedProduct,validDate,financePurchase,financeShrimp,applyFinance,financeEntries,goodsCents,financeReport,csvText};
 if(typeof module!=='undefined')module.exports=root.ShrimpCore;
 })(globalThis);
