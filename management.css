@@ -8,7 +8,7 @@
 
 #od{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;overflow-x:hidden}
 
-:root{--shrimp-release:20261121-simpleorder2}
+:root{--shrimp-release:20261121-labels1}
 #orderClearCustomer{min-height:40px;font-size:13px;max-width:100%;white-space:normal}
 
 #od[open],#pd[open],#customerDialog[open],#customerMatchDialog[open],#customerMergeDialog[open]{position:fixed;top:var(--shrimp-dialog-top,12px);bottom:auto;left:0;right:0;margin:0 auto;max-height:var(--shrimp-dialog-height,calc(100vh - 24px));overflow-y:auto;overflow-x:hidden}
