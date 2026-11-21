@@ -63,7 +63,7 @@ function applyCustomerOrder(state,id,next,expected,operation,actor,now,selection
    if(!next.customerId||list.some(c=>c.id===next.customerId)||state?.customerAliases?.[next.customerId])throw Error('獨立客戶 ID 衝突，請重新開啟訂單');
   }
  }
- const n=applyOrder(state,id,next,expected,operation,actor,now);
+ const n=applyOrder(state,id,next,expected,operation,actor,now,options);
  if(next&&!expected){n.customers||={};const profile=n.customers[next.customerId]||{},chosen=selection?.kind==='existing'?selection.snapshot:null;const suffix=chosen?.phoneLast3||next.phoneLast3||'';n.customers[next.customerId]={...profile,name:next.customer,phoneLast3:suffix,updatedBy:actor,updatedAt:now};}
  return n;
 }
@@ -367,6 +367,6 @@ function financeReport(orders,legacy,f,startDate,endDate){
  return r;
 }
 function csvText(rows){return '\uFEFF'+rows.map(row=>row.map(v=>'"'+(typeof v==='string'?v.replace(/^[\s]*[=+@\-]/,"'$&"):String(v??'')).replace(/"/g,'""')+'"').join(',')).join('\r\n');}
-root.ShrimpCore={version:'20261120-ordercontext1',equalLegacy:equal,orderCancelledAt,orderCustomerHistory,orderCustomerContext,customerAnalytics,customerInsights,customerRiskSnapshot,applyCustomerRisk,hasOwn,items,total,sameItems,quantities,normalizeRiskPhone,returnBasis,uncollectedCases,uncollectedMatches,applyUncollected,uncollectedReport,physicalItems,recipeFor,shipmentPlan,configureInventory,inventoryDemand,inventoryDemandIssues,inventoryStats,applyInventory,identity,validLast3,resolveCustomer,customerIndex,customerCandidates,searchCustomers,taipeiDate,updateCustomerProfile,applyCustomerOrder,mergeCustomers,undoCustomerMerge,applyOrder,report,scaled,roundedProduct,validDate,financePurchase,financeShrimp,applyFinance,financeEntries,goodsCents,financeReport,csvText};
+root.ShrimpCore={version:'20261121-simpleorder2',equalLegacy:equal,orderCancelledAt,orderCustomerHistory,orderCustomerContext,customerAnalytics,customerInsights,customerRiskSnapshot,applyCustomerRisk,hasOwn,items,total,sameItems,quantities,normalizeRiskPhone,returnBasis,uncollectedCases,uncollectedMatches,applyUncollected,uncollectedReport,physicalItems,recipeFor,shipmentPlan,configureInventory,inventoryDemand,inventoryDemandIssues,inventoryStats,applyInventory,identity,validLast3,resolveCustomer,customerIndex,customerCandidates,searchCustomers,taipeiDate,updateCustomerProfile,applyCustomerOrder,mergeCustomers,undoCustomerMerge,applyOrder,report,scaled,roundedProduct,validDate,financePurchase,financeShrimp,applyFinance,financeEntries,goodsCents,financeReport,csvText};
 if(typeof module!=='undefined')module.exports=root.ShrimpCore;
 })(globalThis);
